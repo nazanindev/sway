@@ -1,0 +1,317 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { getUserId } from "@/lib/user-id";
+import type { Board, Option, Comment } from "@/lib/supabase/types";
+
+const EMOJIS = ["😍", "🤔", "🚩", "👍"] as const;
+
+type EnrichedOption = Option & {
+  reactions: Record<string, number>;
+  reactionUsers: Record<string, string[]>;
+  comments: (Comment & { option_id: string })[];
+};
+
+interface Props {
+  board: Pick<Board, "id" | "title" | "description" | "expires_at" | "created_at">;
+  initialOptions: EnrichedOption[];
+  justCreated: boolean;
+  justExtended: boolean;
+}
+
+export default function BoardClient({ board, initialOptions, justCreated, justExtended }: Props) {
+  const [options, setOptions] = useState(initialOptions);
+  const [userId, setUserId] = useState("");
+  const [copied, setCopied] = useState(justCreated);
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [commentNames, setCommentNames] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const isExpired = new Date(board.expires_at) < new Date();
+  const daysLeft = Math.max(0, Math.ceil((new Date(board.expires_at).getTime() - Date.now()) / 86_400_000));
+
+  useEffect(() => {
+    setUserId(getUserId());
+  }, []);
+
+  // Auto-clear "copied" banner
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 3000);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  async function toggleReaction(optionId: string, emoji: string) {
+    if (isExpired || !userId) return;
+
+    // Optimistic update
+    setOptions((prev) =>
+      prev.map((o) => {
+        if (o.id !== optionId) return o;
+        const had = o.reactionUsers[emoji]?.includes(userId);
+        const users = had
+          ? (o.reactionUsers[emoji] ?? []).filter((u) => u !== userId)
+          : [...(o.reactionUsers[emoji] ?? []), userId];
+        return {
+          ...o,
+          reactions: { ...o.reactions, [emoji]: users.length },
+          reactionUsers: { ...o.reactionUsers, [emoji]: users },
+        };
+      })
+    );
+
+    await fetch("/api/reactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ option_id: optionId, emoji, user_id: userId }),
+    });
+  }
+
+  async function submitComment(optionId: string) {
+    const body = commentInputs[optionId]?.trim();
+    if (!body || submitting[optionId]) return;
+
+    setSubmitting((s) => ({ ...s, [optionId]: true }));
+
+    const res = await fetch("/api/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        option_id: optionId,
+        body,
+        user_name: commentNames[optionId]?.trim() || null,
+      }),
+    });
+
+    if (res.ok) {
+      const comment = await res.json();
+      setOptions((prev) =>
+        prev.map((o) =>
+          o.id === optionId ? { ...o, comments: [...o.comments, comment] } : o
+        )
+      );
+      setCommentInputs((c) => ({ ...c, [optionId]: "" }));
+    }
+
+    setSubmitting((s) => ({ ...s, [optionId]: false }));
+  }
+
+  async function handleExtend() {
+    setCheckoutLoading(true);
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ board_id: board.id }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+    else setCheckoutLoading(false);
+  }
+
+  async function copyLink() {
+    await navigator.clipboard.writeText(window.location.href.split("?")[0]);
+    setCopied(true);
+  }
+
+  return (
+    <main className="max-w-lg mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="mb-6">
+        <a href="/" className="text-sm text-[var(--muted)] hover:underline">← Sway</a>
+        <h1 className="text-2xl font-bold mt-2 leading-snug">{board.title}</h1>
+        {board.description && <p className="text-[var(--muted)] text-sm mt-1">{board.description}</p>}
+
+        <div className="flex items-center gap-3 mt-3 flex-wrap">
+          {!isExpired && (
+            <span className="text-xs text-[var(--muted)]">
+              {daysLeft === 0 ? "Expires today" : `${daysLeft}d left`}
+            </span>
+          )}
+          {isExpired && (
+            <span className="text-xs font-medium text-red-500">Expired</span>
+          )}
+          <button
+            onClick={copyLink}
+            className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors"
+          >
+            {copied ? "Link copied!" : "Copy link"}
+          </button>
+        </div>
+      </div>
+
+      {justExtended && (
+        <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+          Board extended for 7 more days.
+        </div>
+      )}
+
+      {/* Options */}
+      <div className="space-y-4">
+        {options.map((opt) => (
+          <OptionCard
+            key={opt.id}
+            option={opt}
+            userId={userId}
+            isExpired={isExpired}
+            commentInput={commentInputs[opt.id] ?? ""}
+            commentName={commentNames[opt.id] ?? ""}
+            isSubmitting={!!submitting[opt.id]}
+            onReact={(emoji) => toggleReaction(opt.id, emoji)}
+            onCommentChange={(v) => setCommentInputs((c) => ({ ...c, [opt.id]: v }))}
+            onNameChange={(v) => setCommentNames((c) => ({ ...c, [opt.id]: v }))}
+            onCommentSubmit={() => submitComment(opt.id)}
+          />
+        ))}
+      </div>
+
+      {/* Expiry CTA */}
+      {isExpired && (
+        <div className="mt-8 rounded-2xl border-2 border-dashed border-[var(--border)] p-6 text-center space-y-3">
+          <p className="font-semibold">This board has expired</p>
+          <p className="text-sm text-[var(--muted)]">Reopen it to collect more reactions.</p>
+          <button
+            onClick={handleExtend}
+            disabled={checkoutLoading}
+            className="rounded-xl bg-[var(--accent)] text-white font-semibold px-6 py-3 text-sm hover:opacity-90 disabled:opacity-40 transition-opacity"
+          >
+            {checkoutLoading ? "Loading…" : "Reopen this board · $3"}
+          </button>
+        </div>
+      )}
+    </main>
+  );
+}
+
+// ─── OptionCard ───────────────────────────────────────────────────────────────
+
+function OptionCard({
+  option, userId, isExpired,
+  commentInput, commentName, isSubmitting,
+  onReact, onCommentChange, onNameChange, onCommentSubmit,
+}: {
+  option: EnrichedOption;
+  userId: string;
+  isExpired: boolean;
+  commentInput: string;
+  commentName: string;
+  isSubmitting: boolean;
+  onReact: (emoji: string) => void;
+  onCommentChange: (v: string) => void;
+  onNameChange: (v: string) => void;
+  onCommentSubmit: () => void;
+}) {
+  const [showComments, setShowComments] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") onCommentSubmit();
+  }
+
+  const totalReactions = Object.values(option.reactions).reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+      {/* Image */}
+      {option.image_url && (
+        <div className="aspect-video w-full bg-gray-100 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={option.image_url}
+            alt={option.title}
+            className="w-full h-full object-cover"
+            onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
+          />
+        </div>
+      )}
+
+      <div className="px-4 pt-4 pb-3">
+        {/* Title + link */}
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-semibold leading-snug">{option.title}</p>
+          {option.link_url && (
+            <a
+              href={option.link_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[var(--accent)] shrink-0 hover:underline"
+            >
+              View ↗
+            </a>
+          )}
+        </div>
+        {option.notes && <p className="text-sm text-[var(--muted)] mt-1">{option.notes}</p>}
+
+        {/* Emoji reactions */}
+        <div className="flex gap-2 mt-3 flex-wrap">
+          {EMOJIS.map((emoji) => {
+            const count = option.reactions[emoji] ?? 0;
+            const reacted = option.reactionUsers[emoji]?.includes(userId);
+            return (
+              <button
+                key={emoji}
+                onClick={() => onReact(emoji)}
+                disabled={isExpired}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border transition-all
+                  ${reacted
+                    ? "bg-[var(--accent)] border-[var(--accent)] text-white"
+                    : "border-[var(--border)] hover:border-[var(--accent)] hover:bg-blue-50"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <span>{emoji}</span>
+                {count > 0 && <span className="font-medium tabular-nums">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Comments toggle */}
+        <button
+          onClick={() => {
+            setShowComments((s) => !s);
+            if (!showComments) setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+          className="mt-3 text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+        >
+          {option.comments.length > 0
+            ? `${option.comments.length} comment${option.comments.length !== 1 ? "s" : ""} · add yours`
+            : isExpired ? `${option.comments.length} comments` : "Add a comment"}
+        </button>
+      </div>
+
+      {/* Comments section */}
+      {showComments && (
+        <div className="border-t border-[var(--border)] px-4 pb-4 pt-3 space-y-3 bg-gray-50">
+          {option.comments.map((c) => (
+            <div key={c.id} className="text-sm">
+              <span className="font-medium">{c.user_name || "Anonymous"}</span>
+              <span className="text-[var(--muted)] mx-1">·</span>
+              <span>{c.body}</span>
+            </div>
+          ))}
+          {!isExpired && (
+            <div className="flex gap-2 mt-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={commentInput}
+                onChange={(e) => onCommentChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Add a comment…"
+                maxLength={500}
+                className="flex-1 min-w-0 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              />
+              <button
+                onClick={onCommentSubmit}
+                disabled={!commentInput.trim() || isSubmitting}
+                className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
+              >
+                {isSubmitting ? "…" : "Send"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
