@@ -81,6 +81,7 @@ export async function POST(req: Request) {
     .single();
 
   if (boardErr || !board) {
+    console.error("[boards] insert error:", boardErr);
     return NextResponse.json({ error: "Failed to create board" }, { status: 500 });
   }
 
@@ -95,6 +96,7 @@ export async function POST(req: Request) {
 
   const { error: optErr } = await db.from("options").insert(optionRows);
   if (optErr) {
+    console.error("[boards] options insert error:", optErr);
     return NextResponse.json({ error: "Failed to create options" }, { status: 500 });
   }
 

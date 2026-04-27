@@ -289,7 +289,7 @@ export default function HomePage() {
           disabled={loading || !title.trim()}
           className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-base hover:opacity-90 disabled:opacity-40 transition-opacity"
         >
-          {loading ? "Creating…" : "Make a Sway →"}
+          {loading ? "Creating…" : "Create board →"}
         </button>
       </form>
     </main>
