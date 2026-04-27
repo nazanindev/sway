@@ -14,8 +14,6 @@ Group decisions often live in messy chat threads, with scattered links and opini
 
 Sway is a lightweight, mobile-first tool designed for instant sharing — turning that chaos into a simple, structured workflow.
 
-I built it assuming real usage from the start, prioritizing scalability and low-friction sharing as core design constraints.
-
 ## Features
 
 - Create boards with options (links, images, or text)
