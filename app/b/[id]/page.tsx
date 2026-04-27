@@ -26,9 +26,10 @@ export default async function BoardPage({ params, searchParams }: {
 
   const optionIds = (options ?? []).map((o) => o.id);
 
-  const [{ data: reactions }, { data: comments }] = await Promise.all([
+  const [{ data: reactions }, { data: comments }, { data: votes }] = await Promise.all([
     db.from("reactions").select("option_id, emoji, user_id").in("option_id", optionIds),
     db.from("comments").select("id, option_id, user_name, body, created_at").in("option_id", optionIds).order("created_at"),
+    db.from("votes").select("option_id, user_id").eq("board_id", params.id),
   ]);
 
   const reactionCounts: Record<string, Record<string, number>> = {};
@@ -48,11 +49,21 @@ export default async function BoardPage({ params, searchParams }: {
     commentsByOption[c.option_id]!.push(c);
   }
 
+  const voteCounts: Record<string, number> = {};
+  const votersByOption: Record<string, string[]> = {};
+  for (const v of votes ?? []) {
+    voteCounts[v.option_id] = (voteCounts[v.option_id] ?? 0) + 1;
+    votersByOption[v.option_id] ??= [];
+    votersByOption[v.option_id].push(v.user_id);
+  }
+
   const enriched = (options ?? []).map((o) => ({
     ...o,
     reactions: reactionCounts[o.id] ?? {},
     reactionUsers: reactionUsers[o.id] ?? {},
     comments: commentsByOption[o.id] ?? [],
+    voteCount: voteCounts[o.id] ?? 0,
+    voters: votersByOption[o.id] ?? [],
   }));
 
   return (
