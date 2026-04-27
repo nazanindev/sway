@@ -48,17 +48,20 @@ export async function POST(req: Request) {
 
   if (!existing) {
     // No vote yet — cast it
-    await db.from("votes").insert({ board_id, option_id, user_id });
+    const { error } = await db.from("votes").insert({ board_id, option_id, user_id });
+    if (error) return NextResponse.json({ error: "Failed to save vote" }, { status: 500 });
     return NextResponse.json({ action: "voted" });
   }
 
   if (existing.option_id === option_id) {
     // Same option — remove vote (toggle off)
-    await db.from("votes").delete().eq("id", existing.id);
+    const { error } = await db.from("votes").delete().eq("id", existing.id);
+    if (error) return NextResponse.json({ error: "Failed to remove vote" }, { status: 500 });
     return NextResponse.json({ action: "unvoted" });
   }
 
   // Different option — move vote
-  await db.from("votes").update({ option_id }).eq("id", existing.id);
+  const { error } = await db.from("votes").update({ option_id }).eq("id", existing.id);
+  if (error) return NextResponse.json({ error: "Failed to move vote" }, { status: 500 });
   return NextResponse.json({ action: "moved", from: existing.option_id });
 }

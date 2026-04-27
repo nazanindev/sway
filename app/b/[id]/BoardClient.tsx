@@ -115,17 +115,14 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
         if (newVote?.board_id !== board.id && oldVote?.board_id !== board.id) return;
         setOptions((prev) =>
           prev.map((o) => {
-            let count = o.voteCount;
             let voters = [...o.voters];
             if (oldVote?.option_id === o.id) {
-              count = Math.max(0, count - 1);
               voters = voters.filter((u) => u !== oldVote.user_id);
             }
-            if (newVote?.option_id === o.id) {
-              count += 1;
-              if (!voters.includes(newVote.user_id)) voters.push(newVote.user_id);
+            if (newVote?.option_id === o.id && !voters.includes(newVote.user_id)) {
+              voters = [...voters, newVote.user_id];
             }
-            return { ...o, voteCount: count, voters };
+            return { ...o, voteCount: voters.length, voters };
           })
         );
       }

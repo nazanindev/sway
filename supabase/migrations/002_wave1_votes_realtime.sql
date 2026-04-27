@@ -14,6 +14,10 @@ CREATE TABLE votes (
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "votes_select" ON votes FOR SELECT USING (true);
 
+-- Supabase doesn't auto-grant table privileges for migrations the way the
+-- Dashboard does, so we must grant explicitly.
+GRANT ALL ON public.votes TO service_role, authenticated, anon;
+
 CREATE INDEX votes_board_id_idx  ON votes(board_id);
 CREATE INDEX votes_option_id_idx ON votes(option_id);
 
