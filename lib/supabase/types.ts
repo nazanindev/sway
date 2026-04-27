@@ -15,6 +15,8 @@ export type Database = {
           edit_token?: string;
           expires_at?: string;
         };
+        Update: Partial<Database["public"]["Tables"]["boards"]["Row"]>;
+        Relationships: [];
       };
       options: {
         Row: {
@@ -28,6 +30,8 @@ export type Database = {
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["options"]["Row"], "id" | "created_at"> & { id?: string };
+        Update: Partial<Database["public"]["Tables"]["options"]["Row"]>;
+        Relationships: [];
       };
       reactions: {
         Row: {
@@ -38,6 +42,8 @@ export type Database = {
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["reactions"]["Row"], "id" | "created_at"> & { id?: string };
+        Update: Partial<Database["public"]["Tables"]["reactions"]["Row"]>;
+        Relationships: [];
       };
       comments: {
         Row: {
@@ -48,6 +54,8 @@ export type Database = {
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["comments"]["Row"], "id" | "created_at"> & { id?: string };
+        Update: Partial<Database["public"]["Tables"]["comments"]["Row"]>;
+        Relationships: [];
       };
       payments: {
         Row: {
@@ -59,8 +67,12 @@ export type Database = {
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["payments"]["Row"], "id" | "created_at"> & { id?: string };
+        Update: Partial<Database["public"]["Tables"]["payments"]["Row"]>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 };
 
