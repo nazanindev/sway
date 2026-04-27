@@ -26,11 +26,19 @@ export default async function BoardPage({ params, searchParams }: {
 
   const optionIds = (options ?? []).map((o) => o.id);
 
-  const [{ data: reactions }, { data: comments }, { data: votes }] = await Promise.all([
+  const [
+    { data: reactions, error: reactionsErr },
+    { data: comments, error: commentsErr },
+    { data: votes, error: votesErr },
+  ] = await Promise.all([
     db.from("reactions").select("option_id, emoji, user_id").in("option_id", optionIds),
     db.from("comments").select("id, option_id, user_name, body, created_at").in("option_id", optionIds).order("created_at"),
     db.from("votes").select("option_id, user_id").eq("board_id", params.id),
   ]);
+
+  if (reactionsErr) console.error("[board page] reactions query failed:", reactionsErr);
+  if (commentsErr)  console.error("[board page] comments query failed:",  commentsErr);
+  if (votesErr)     console.error("[board page] votes query failed:",     votesErr);
 
   const reactionCounts: Record<string, Record<string, number>> = {};
   const reactionUsers: Record<string, Record<string, string[]>> = {};
