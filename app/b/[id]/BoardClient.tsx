@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { getUserId } from "@/lib/user-id";
 import type { Board, Option, Comment } from "@/lib/supabase/types";
 
-const EMOJIS = ["😍", "🤔", "🚩", "👍"] as const;
+const EMOJIS = ["❤️", "🔥", "🤔", "❌"] as const;
 
 type EnrichedOption = Option & {
   reactions: Record<string, number>;
@@ -19,6 +19,17 @@ interface Props {
   justExtended: boolean;
 }
 
+function getTimeLeft(expiresAt: string): string | null {
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return null;
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 60) return `Closes in ${minutes}m`;
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours < 24) return `Closes in ${hours}h`;
+  const days = Math.ceil(ms / 86_400_000);
+  return `${days}d left`;
+}
+
 export default function BoardClient({ board, initialOptions, justCreated, justExtended }: Props) {
   const [options, setOptions] = useState(initialOptions);
   const [userId, setUserId] = useState("");
@@ -27,13 +38,20 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
   const [commentNames, setCommentNames] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(board.expires_at));
 
-  const isExpired = new Date(board.expires_at) < new Date();
-  const daysLeft = Math.max(0, Math.ceil((new Date(board.expires_at).getTime() - Date.now()) / 86_400_000));
+  const isClosed = new Date(board.expires_at) < new Date();
 
   useEffect(() => {
     setUserId(getUserId());
   }, []);
+
+  // Live countdown ticker
+  useEffect(() => {
+    if (isClosed) return;
+    const t = setInterval(() => setTimeLeft(getTimeLeft(board.expires_at)), 30_000);
+    return () => clearInterval(t);
+  }, [board.expires_at, isClosed]);
 
   // Auto-clear "copied" banner
   useEffect(() => {
@@ -42,10 +60,16 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
     return () => clearTimeout(t);
   }, [copied]);
 
-  async function toggleReaction(optionId: string, emoji: string) {
-    if (isExpired || !userId) return;
+  // Determine winner option(s) by total reaction count
+  const totalReactions = (opt: EnrichedOption) =>
+    Object.values(opt.reactions).reduce((a, b) => a + b, 0);
+  const maxReactionCount = Math.max(...options.map(totalReactions));
+  const isPopular = (opt: EnrichedOption) =>
+    maxReactionCount > 0 && totalReactions(opt) === maxReactionCount;
 
-    // Optimistic update
+  async function toggleReaction(optionId: string, emoji: string) {
+    if (isClosed || !userId) return;
+
     setOptions((prev) =>
       prev.map((o) => {
         if (o.id !== optionId) return o;
@@ -123,26 +147,24 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
         {board.description && <p className="text-[var(--muted)] text-sm mt-1">{board.description}</p>}
 
         <div className="flex items-center gap-3 mt-3 flex-wrap">
-          {!isExpired && (
-            <span className="text-xs text-[var(--muted)]">
-              {daysLeft === 0 ? "Expires today" : `${daysLeft}d left`}
-            </span>
+          {!isClosed && timeLeft && (
+            <span className="text-xs text-[var(--muted)]">{timeLeft}</span>
           )}
-          {isExpired && (
-            <span className="text-xs font-medium text-red-500">Expired</span>
+          {isClosed && (
+            <span className="text-xs font-medium text-red-500">Closed</span>
           )}
           <button
             onClick={copyLink}
             className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors"
           >
-            {copied ? "Link copied!" : "Copy link"}
+            {copied ? "Link copied!" : "Send this Sway →"}
           </button>
         </div>
       </div>
 
       {justExtended && (
         <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
-          Board extended for 7 more days.
+          Sway reopened for 7 more days.
         </div>
       )}
 
@@ -153,7 +175,8 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
             key={opt.id}
             option={opt}
             userId={userId}
-            isExpired={isExpired}
+            isClosed={isClosed}
+            isPopular={isPopular(opt)}
             commentInput={commentInputs[opt.id] ?? ""}
             commentName={commentNames[opt.id] ?? ""}
             isSubmitting={!!submitting[opt.id]}
@@ -165,17 +188,17 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
         ))}
       </div>
 
-      {/* Expiry CTA */}
-      {isExpired && (
+      {/* Closed CTA */}
+      {isClosed && (
         <div className="mt-8 rounded-2xl border-2 border-dashed border-[var(--border)] p-6 text-center space-y-3">
-          <p className="font-semibold">This board has expired</p>
+          <p className="font-semibold">This Sway is closed</p>
           <p className="text-sm text-[var(--muted)]">Reopen it to collect more reactions.</p>
           <button
             onClick={handleExtend}
             disabled={checkoutLoading}
             className="rounded-xl bg-[var(--accent)] text-white font-semibold px-6 py-3 text-sm hover:opacity-90 disabled:opacity-40 transition-opacity"
           >
-            {checkoutLoading ? "Loading…" : "Reopen this board · $3"}
+            {checkoutLoading ? "Loading…" : "Reopen this Sway · $3"}
           </button>
         </div>
       )}
@@ -186,13 +209,14 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 // ─── OptionCard ───────────────────────────────────────────────────────────────
 
 function OptionCard({
-  option, userId, isExpired,
+  option, userId, isClosed, isPopular,
   commentInput, commentName, isSubmitting,
   onReact, onCommentChange, onNameChange, onCommentSubmit,
 }: {
   option: EnrichedOption;
   userId: string;
-  isExpired: boolean;
+  isClosed: boolean;
+  isPopular: boolean;
   commentInput: string;
   commentName: string;
   isSubmitting: boolean;
@@ -211,7 +235,7 @@ function OptionCard({
   const totalReactions = Object.values(option.reactions).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-white overflow-hidden">
+    <div className={`rounded-2xl border bg-white overflow-hidden transition-all ${isPopular ? "border-[var(--accent)] ring-1 ring-[var(--accent)]" : "border-[var(--border)]"}`}>
       {/* Image */}
       {option.image_url && (
         <div className="aspect-video w-full bg-gray-100 overflow-hidden">
@@ -226,6 +250,15 @@ function OptionCard({
       )}
 
       <div className="px-4 pt-4 pb-3">
+        {/* Popular badge */}
+        {isPopular && (
+          <div className="mb-2 text-xs font-medium text-[var(--accent)]">
+            {isClosed
+              ? `${totalReactions} ${totalReactions === 1 ? "person" : "people"} picked this`
+              : "Most popular"}
+          </div>
+        )}
+
         {/* Title + link */}
         <div className="flex items-start justify-between gap-2">
           <p className="font-semibold leading-snug">{option.title}</p>
@@ -251,7 +284,7 @@ function OptionCard({
               <button
                 key={emoji}
                 onClick={() => onReact(emoji)}
-                disabled={isExpired}
+                disabled={isClosed}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border transition-all
                   ${reacted
                     ? "bg-[var(--accent)] border-[var(--accent)] text-white"
@@ -275,7 +308,7 @@ function OptionCard({
         >
           {option.comments.length > 0
             ? `${option.comments.length} comment${option.comments.length !== 1 ? "s" : ""} · add yours`
-            : isExpired ? `${option.comments.length} comments` : "Add a comment"}
+            : isClosed ? `${option.comments.length} comments` : "Add a comment"}
         </button>
       </div>
 
@@ -289,25 +322,35 @@ function OptionCard({
               <span>{c.body}</span>
             </div>
           ))}
-          {!isExpired && (
-            <div className="flex gap-2 mt-2">
+          {!isClosed && (
+            <div className="space-y-1.5 mt-2">
               <input
-                ref={inputRef}
                 type="text"
-                value={commentInput}
-                onChange={(e) => onCommentChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Add a comment…"
-                maxLength={500}
-                className="flex-1 min-w-0 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                value={commentName}
+                onChange={(e) => onNameChange(e.target.value)}
+                placeholder="Your name (optional)"
+                maxLength={50}
+                className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
-              <button
-                onClick={onCommentSubmit}
-                disabled={!commentInput.trim() || isSubmitting}
-                className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
-              >
-                {isSubmitting ? "…" : "Send"}
-              </button>
+              <div className="flex gap-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={commentInput}
+                  onChange={(e) => onCommentChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Add a comment…"
+                  maxLength={500}
+                  className="flex-1 min-w-0 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                />
+                <button
+                  onClick={onCommentSubmit}
+                  disabled={!commentInput.trim() || isSubmitting}
+                  className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
+                >
+                  {isSubmitting ? "…" : "Send"}
+                </button>
+              </div>
             </div>
           )}
         </div>

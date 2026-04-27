@@ -6,6 +6,15 @@ import { rateLimit, getIp } from "@/lib/rate-limit";
 const MAX_OPTIONS = 6;
 const MAX_TITLE_LEN = 120;
 const MAX_NOTES_LEN = 300;
+const MAX_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+const EXPIRY_MAP: Record<string, number> = {
+  "1h":  1 * 60 * 60 * 1000,
+  "6h":  6 * 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
+  "3d":  3 * 24 * 60 * 60 * 1000,
+  "7d":  7 * 24 * 60 * 60 * 1000,
+};
 
 export async function POST(req: Request) {
   const ip = getIp(req);
@@ -20,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { title, description, options } = body as Record<string, unknown>;
+  const { title, description, options, expires_in } = body as Record<string, unknown>;
 
   if (typeof title !== "string" || title.trim().length === 0) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
@@ -28,12 +37,17 @@ export async function POST(req: Request) {
   if (title.trim().length > MAX_TITLE_LEN) {
     return NextResponse.json({ error: "title too long" }, { status: 400 });
   }
-  if (!Array.isArray(options) || options.length < 2 || options.length > MAX_OPTIONS) {
+  if (!Array.isArray(options) || options.length < 1 || options.length > MAX_OPTIONS) {
     return NextResponse.json(
-      { error: `options must be an array of 2–${MAX_OPTIONS} items` },
+      { error: `options must be an array of 1–${MAX_OPTIONS} items` },
       { status: 400 }
     );
   }
+
+  const expiryMs = typeof expires_in === "string" && EXPIRY_MAP[expires_in]
+    ? EXPIRY_MAP[expires_in]
+    : MAX_EXPIRY_MS;
+  const expiresAt = new Date(Date.now() + Math.min(expiryMs, MAX_EXPIRY_MS));
 
   for (const opt of options) {
     if (typeof opt !== "object" || opt === null) {
@@ -58,7 +72,11 @@ export async function POST(req: Request) {
 
   const { data: board, error: boardErr } = await db
     .from("boards")
-    .insert({ title: title.trim(), description: typeof description === "string" ? description.trim() || null : null })
+    .insert({
+      title: title.trim(),
+      description: typeof description === "string" ? description.trim() || null : null,
+      expires_at: expiresAt.toISOString(),
+    })
     .select()
     .single();
 
