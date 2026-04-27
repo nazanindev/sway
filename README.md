@@ -1,28 +1,25 @@
 # Sway
 
-A lightweight real-time polling app. Create a board, add options, and let people vote, react, and comment — no account required.
+A lightweight real-time app for group decision-making. Create a board, share options, and collect votes, reactions, and comments — no account required.
 
 ## Features
 
-- Create polls with links and images per option
-- One vote per user (stored by anonymous ID), moveable
-- Emoji reactions and comments per option
-- Live updates across sessions via Supabase Realtime
-- Boards expire after 7 days; pay to extend
+- Create boards with options (links, images, text)
+- Anonymous voting (one vote per user, moveable)
+- Emoji reactions and threaded comments per option
+- Real-time updates across sessions via Supabase Realtime
+- Auto-expiring boards (7 days) with optional paid extensions
 
-## Stack
+## Tech Stack
 
-- **Next.js 14** (App Router, server components)
+- **Next.js 14** (App Router, Server Components)
 - **Supabase** — Postgres, Realtime, Row Level Security
 - **Tailwind CSS**
-- **Stripe** — board extensions
+- **Stripe** — payments for board extensions
 
-## Running locally
+## Local Development
 
 ```bash
-cp .env.local.example .env.local   # fill in Supabase + Stripe keys
+cp .env.local.example .env.local   # add Supabase + Stripe keys
 npm install
 npm run dev
-```
-
-Apply migrations in `supabase/migrations/` via the Supabase SQL editor, then open [http://localhost:3000](http://localhost:3000).
