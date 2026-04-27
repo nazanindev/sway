@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useRef } from "react";
 import { getUserId } from "@/lib/user-id";
+import { supabase } from "@/lib/supabase/client";
 import type { Board, Option, Comment } from "@/lib/supabase/types";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 const EMOJIS = ["❤️", "🔥", "🤔", "❌"] as const;
 
@@ -10,6 +12,8 @@ type EnrichedOption = Option & {
   reactions: Record<string, number>;
   reactionUsers: Record<string, string[]>;
   comments: (Comment & { option_id: string })[];
+  voteCount: number;
+  voters: string[];
 };
 
 interface Props {
@@ -46,6 +50,88 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
     setUserId(getUserId());
   }, []);
 
+  // Realtime subscriptions
+  useEffect(() => {
+    const optionIds = new Set(initialOptions.map((o) => o.id));
+    const channel = supabase.channel(`board:${board.id}`);
+
+    // Reactions (INSERT and DELETE)
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "reactions" },
+      (payload: RealtimePostgresChangesPayload<{ option_id: string; emoji: string; user_id: string }>) => {
+        const r = (payload.new && Object.keys(payload.new).length > 0 ? payload.new : payload.old) as {
+          option_id: string;
+          emoji: string;
+          user_id: string;
+        };
+        if (!r || !optionIds.has(r.option_id)) return;
+        setOptions((prev) =>
+          prev.map((o) => {
+            if (o.id !== r.option_id) return o;
+            const currentUsers = o.reactionUsers[r.emoji] ?? [];
+            const newUsers =
+              payload.eventType === "INSERT"
+                ? [...currentUsers.filter((u) => u !== r.user_id), r.user_id]
+                : currentUsers.filter((u) => u !== r.user_id);
+            return {
+              ...o,
+              reactions: { ...o.reactions, [r.emoji]: newUsers.length },
+              reactionUsers: { ...o.reactionUsers, [r.emoji]: newUsers },
+            };
+          })
+        );
+      }
+    );
+
+    // Comments (INSERT only)
+    channel.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "comments" },
+      (payload: RealtimePostgresChangesPayload<Comment & { option_id: string }>) => {
+        const c = payload.new as Comment & { option_id: string };
+        if (!c || !optionIds.has(c.option_id)) return;
+        setOptions((prev) =>
+          prev.map((o) => {
+            if (o.id !== c.option_id) return o;
+            if (o.comments.some((existing) => existing.id === c.id)) return o;
+            return { ...o, comments: [...o.comments, c] };
+          })
+        );
+      }
+    );
+
+    // Votes (INSERT, UPDATE, DELETE)
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "votes" },
+      (payload: RealtimePostgresChangesPayload<{ board_id: string; option_id: string; user_id: string }>) => {
+        const newVote = payload.new && Object.keys(payload.new).length > 0
+          ? (payload.new as { board_id: string; option_id: string; user_id: string })
+          : null;
+        const oldVote = payload.old && Object.keys(payload.old).length > 0
+          ? (payload.old as { board_id: string; option_id: string; user_id: string })
+          : null;
+        if (newVote?.board_id !== board.id && oldVote?.board_id !== board.id) return;
+        setOptions((prev) =>
+          prev.map((o) => {
+            let voters = [...o.voters];
+            if (oldVote?.option_id === o.id) {
+              voters = voters.filter((u) => u !== oldVote.user_id);
+            }
+            if (newVote?.option_id === o.id && !voters.includes(newVote.user_id)) {
+              voters = [...voters, newVote.user_id];
+            }
+            return { ...o, voteCount: voters.length, voters };
+          })
+        );
+      }
+    );
+
+    channel.subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [board.id, initialOptions]);
+
   // Live countdown ticker
   useEffect(() => {
     if (isClosed) return;
@@ -60,15 +146,16 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
     return () => clearTimeout(t);
   }, [copied]);
 
-  // Determine winner option(s) by total reaction count
-  const totalReactions = (opt: EnrichedOption) =>
-    Object.values(opt.reactions).reduce((a, b) => a + b, 0);
-  const maxReactionCount = Math.max(...options.map(totalReactions));
-  const isPopular = (opt: EnrichedOption) =>
-    maxReactionCount > 0 && totalReactions(opt) === maxReactionCount;
+  const maxVoteCount = Math.max(0, ...options.map((o) => o.voteCount));
+  const isPopular = (opt: EnrichedOption) => maxVoteCount > 0 && opt.voteCount === maxVoteCount;
+
+  const myVotedOptionId = options.find((o) => o.voters.includes(userId))?.id ?? null;
 
   async function toggleReaction(optionId: string, emoji: string) {
     if (isClosed || !userId) return;
+
+    // Capture previous state for rollback
+    const prevOptions = options;
 
     setOptions((prev) =>
       prev.map((o) => {
@@ -85,11 +172,79 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       })
     );
 
-    await fetch("/api/reactions", {
+    const res = await fetch("/api/reactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ option_id: optionId, emoji, user_id: userId }),
     });
+
+    if (!res.ok) {
+      setOptions(prevOptions);
+    }
+  }
+
+  async function castVote(optionId: string) {
+    if (isClosed || !userId) return;
+
+    const prevOptions = options;
+
+    // Optimistic: remove from current voted option, add to new one
+    setOptions((prev) =>
+      prev.map((o) => {
+        let count = o.voteCount;
+        let voters = [...o.voters];
+        if (o.voters.includes(userId)) {
+          count = Math.max(0, count - 1);
+          voters = voters.filter((u) => u !== userId);
+        }
+        if (o.id === optionId) {
+          if (myVotedOptionId !== optionId) {
+            count += 1;
+            if (!voters.includes(userId)) voters.push(userId);
+          }
+        }
+        return { ...o, voteCount: count, voters };
+      })
+    );
+
+    let result: { action: string; from?: string } | null = null;
+    try {
+      const res = await fetch("/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ board_id: board.id, option_id: optionId, user_id: userId }),
+      });
+      if (!res.ok) {
+        setOptions(prevOptions);
+        return;
+      }
+      result = await res.json();
+    } catch {
+      setOptions(prevOptions);
+      return;
+    }
+
+    // Reconcile client state with what the server actually did.
+    // This corrects any divergence from race conditions or network delays.
+    if (!result) return;
+    setOptions((prev) =>
+      prev.map((o) => {
+        let voters = [...o.voters];
+        if (result.action === "voted") {
+          if (o.id === optionId) {
+            if (!voters.includes(userId)) voters = [...voters, userId];
+          } else {
+            voters = voters.filter((u) => u !== userId);
+          }
+        } else if (result.action === "unvoted") {
+          voters = voters.filter((u) => u !== userId);
+        } else if (result.action === "moved") {
+          if (o.id === result.from) voters = voters.filter((u) => u !== userId);
+          if (o.id === optionId && !voters.includes(userId)) voters = [...voters, userId];
+        }
+        return { ...o, voteCount: voters.length, voters };
+      })
+    );
   }
 
   async function submitComment(optionId: string) {
@@ -177,10 +332,12 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
             userId={userId}
             isClosed={isClosed}
             isPopular={isPopular(opt)}
+            myVotedOptionId={myVotedOptionId}
             commentInput={commentInputs[opt.id] ?? ""}
             commentName={commentNames[opt.id] ?? ""}
             isSubmitting={!!submitting[opt.id]}
             onReact={(emoji) => toggleReaction(opt.id, emoji)}
+            onVote={() => castVote(opt.id)}
             onCommentChange={(v) => setCommentInputs((c) => ({ ...c, [opt.id]: v }))}
             onNameChange={(v) => setCommentNames((c) => ({ ...c, [opt.id]: v }))}
             onCommentSubmit={() => submitComment(opt.id)}
@@ -209,18 +366,20 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 // ─── OptionCard ───────────────────────────────────────────────────────────────
 
 function OptionCard({
-  option, userId, isClosed, isPopular,
+  option, userId, isClosed, isPopular, myVotedOptionId,
   commentInput, commentName, isSubmitting,
-  onReact, onCommentChange, onNameChange, onCommentSubmit,
+  onReact, onVote, onCommentChange, onNameChange, onCommentSubmit,
 }: {
   option: EnrichedOption;
   userId: string;
   isClosed: boolean;
   isPopular: boolean;
+  myVotedOptionId: string | null;
   commentInput: string;
   commentName: string;
   isSubmitting: boolean;
   onReact: (emoji: string) => void;
+  onVote: () => void;
   onCommentChange: (v: string) => void;
   onNameChange: (v: string) => void;
   onCommentSubmit: () => void;
@@ -232,7 +391,12 @@ function OptionCard({
     if (e.key === "Enter") onCommentSubmit();
   }
 
-  const totalReactions = Object.values(option.reactions).reduce((a, b) => a + b, 0);
+  const isMyVote = myVotedOptionId === option.id;
+  const hasVotedElsewhere = myVotedOptionId !== null && !isMyVote;
+
+  let voteLabel = "Vote for this";
+  if (isMyVote) voteLabel = "✓ You voted";
+  else if (hasVotedElsewhere) voteLabel = "Move vote here";
 
   return (
     <div className={`rounded-2xl border bg-white overflow-hidden transition-all ${isPopular ? "border-[var(--accent)] ring-1 ring-[var(--accent)]" : "border-[var(--border)]"}`}>
@@ -254,7 +418,7 @@ function OptionCard({
         {isPopular && (
           <div className="mb-2 text-xs font-medium text-[var(--accent)]">
             {isClosed
-              ? `${totalReactions} ${totalReactions === 1 ? "person" : "people"} picked this`
+              ? `${option.voteCount} ${option.voteCount === 1 ? "person" : "people"} picked this`
               : "Most popular"}
           </div>
         )}
@@ -274,6 +438,26 @@ function OptionCard({
           )}
         </div>
         {option.notes && <p className="text-sm text-[var(--muted)] mt-1">{option.notes}</p>}
+
+        {/* Vote button */}
+        <div className="mt-3">
+          <button
+            onClick={onVote}
+            disabled={isClosed || !userId}
+            className={`text-sm font-medium px-4 py-1.5 rounded-full border transition-all
+              ${isMyVote
+                ? "bg-[var(--accent)] border-[var(--accent)] text-white"
+                : "border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {voteLabel}
+            {option.voteCount > 0 && (
+              <span className="ml-1.5 opacity-70 tabular-nums">
+                {option.voteCount}
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* Emoji reactions */}
         <div className="flex gap-2 mt-3 flex-wrap">

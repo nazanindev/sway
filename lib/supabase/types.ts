@@ -57,6 +57,18 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["comments"]["Row"]>;
         Relationships: [];
       };
+      votes: {
+        Row: {
+          id: string;
+          board_id: string;
+          option_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["votes"]["Row"], "id" | "created_at"> & { id?: string };
+        Update: Partial<Database["public"]["Tables"]["votes"]["Row"]>;
+        Relationships: [];
+      };
       payments: {
         Row: {
           id: string;
@@ -80,3 +92,4 @@ export type Board = Database["public"]["Tables"]["boards"]["Row"];
 export type Option = Database["public"]["Tables"]["options"]["Row"];
 export type Reaction = Database["public"]["Tables"]["reactions"]["Row"];
 export type Comment = Database["public"]["Tables"]["comments"]["Row"];
+export type Vote = Database["public"]["Tables"]["votes"]["Row"];
