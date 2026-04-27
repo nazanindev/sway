@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sway — decide together",
-  description: "Share a board of options with friends and collect reactions in seconds.",
+  title: "Sway — don't decide alone",
+  description: "Stop arguing in group chats. Share a Sway, let your friends pick for you.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
 
-const ALLOWED_EMOJIS = new Set(["😍", "🤔", "🚩", "👍"]);
+const ALLOWED_EMOJIS = new Set(["❤️", "🔥", "🤔", "❌"]);
 
 export async function POST(req: Request) {
   const ip = getIp(req);

@@ -9,6 +9,8 @@ create table boards (
   description text,
   edit_token  text not null unique default encode(gen_random_bytes(32), 'hex'),
   expires_at  timestamptz not null default (now() + interval '7 days'),
+  emoji_set   text[] not null default array['❤️','🔥','🤔','❌'],
+  is_public   boolean not null default false,
   created_at  timestamptz not null default now()
 );
 
@@ -28,7 +30,7 @@ create table options (
 create table reactions (
   id         uuid primary key default gen_random_uuid(),
   option_id  uuid not null references options(id) on delete cascade,
-  emoji      text not null check (emoji in ('😍','🤔','🚩','👍')),
+  emoji      text not null,  -- validated in API layer
   user_id    text not null,  -- localStorage UUID
   created_at timestamptz not null default now(),
   unique (option_id, user_id, emoji)
