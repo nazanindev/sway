@@ -207,15 +207,44 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       })
     );
 
-    const res = await fetch("/api/votes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ board_id: board.id, option_id: optionId, user_id: userId }),
-    });
-
-    if (!res.ok) {
+    let result: { action: string; from?: string } | null = null;
+    try {
+      const res = await fetch("/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ board_id: board.id, option_id: optionId, user_id: userId }),
+      });
+      if (!res.ok) {
+        setOptions(prevOptions);
+        return;
+      }
+      result = await res.json();
+    } catch {
       setOptions(prevOptions);
+      return;
     }
+
+    // Reconcile client state with what the server actually did.
+    // This corrects any divergence from race conditions or network delays.
+    if (!result) return;
+    setOptions((prev) =>
+      prev.map((o) => {
+        let voters = [...o.voters];
+        if (result.action === "voted") {
+          if (o.id === optionId) {
+            if (!voters.includes(userId)) voters = [...voters, userId];
+          } else {
+            voters = voters.filter((u) => u !== userId);
+          }
+        } else if (result.action === "unvoted") {
+          voters = voters.filter((u) => u !== userId);
+        } else if (result.action === "moved") {
+          if (o.id === result.from) voters = voters.filter((u) => u !== userId);
+          if (o.id === optionId && !voters.includes(userId)) voters = [...voters, userId];
+        }
+        return { ...o, voteCount: voters.length, voters };
+      })
+    );
   }
 
   async function submitComment(optionId: string) {
