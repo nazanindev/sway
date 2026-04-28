@@ -28,6 +28,22 @@ const EXPIRY_OPTIONS = [
   { label: "60 days", value: "60d", price: "$3.99" },
 ];
 
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 6l4 4 4-4" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -150,17 +166,16 @@ export default function HomePage() {
   }
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-10">
+    <main className="max-w-lg mx-auto px-4 py-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Sway</h1>
-        <p className="text-[var(--muted)] mt-1 text-lg">Don&apos;t decide alone.</p>
-        <p className="text-sm text-[var(--muted)] mt-0.5">Share a link, let your friends pick for you.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Don&apos;t decide alone.</h1>
+        <p className="text-[var(--muted)] mt-1">Share a link, let your friends pick for you.</p>
       </header>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {/* Board title */}
         <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="board-title">
+          <label className="block text-sm font-medium mb-1.5" htmlFor="board-title">
             What are you deciding? <span className="text-[var(--accent)]">*</span>
           </label>
           <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
@@ -173,14 +188,16 @@ export default function HomePage() {
                 placeholder="Which apartment? Best logo? Dinner spot?"
                 required
                 maxLength={120}
+                autoComplete="off"
                 className="flex-1 py-3 text-base outline-none bg-transparent"
               />
               <button
                 type="button"
                 onClick={() => setBoardExpanded((v) => !v)}
-                className="text-xs text-[var(--muted)] hover:text-[var(--text)] px-1 shrink-0"
+                className="text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer shrink-0 p-1"
+                aria-label={boardExpanded ? "Hide description" : "Add description"}
               >
-                {boardExpanded ? "less" : "more"}
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${boardExpanded ? "rotate-180" : ""}`} />
               </button>
             </div>
             {boardExpanded && (
@@ -206,8 +223,8 @@ export default function HomePage() {
               key={i}
               className="rounded-xl border border-[var(--border)] bg-white overflow-hidden"
             >
-              <div className="flex items-center gap-2 px-3 py-2">
-                <span className="text-[var(--muted)] text-sm w-5 shrink-0">{i + 1}</span>
+              <div className="flex items-center gap-2 px-3 py-2.5">
+                <span className="text-[var(--muted)] text-sm w-5 shrink-0 select-none">{i + 1}</span>
                 <input
                   type="text"
                   value={opt.title}
@@ -219,26 +236,25 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setExpanded(expanded === i ? null : i)}
-                  className="text-xs text-[var(--muted)] hover:text-[var(--text)] px-1"
-                  aria-label="Toggle extra fields"
+                  className="text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer p-1"
+                  aria-label={expanded === i ? "Collapse option" : "Expand option"}
                 >
-                  {expanded === i ? "less" : "more"}
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expanded === i ? "rotate-180" : ""}`} />
                 </button>
                 {options.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeOption(i)}
-                    className="text-[var(--muted)] hover:text-red-500 text-lg leading-none px-1"
+                    className="text-[var(--muted)] hover:text-red-500 transition-colors cursor-pointer p-1"
                     aria-label="Remove option"
                   >
-                    ×
+                    <XIcon className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
               {expanded === i && (
                 <div className="border-t border-[var(--border)] px-4 py-3 space-y-2 bg-gray-50">
-                  {/* Link URL with OG preview fetch */}
                   <div className="relative">
                     <input
                       type="url"
@@ -254,7 +270,6 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {/* Image URL — auto-filled from OG, but editable */}
                   <div className="flex gap-2 items-start">
                     <input
                       type="url"
@@ -291,7 +306,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={addOption}
-              className="w-full rounded-xl border-2 border-dashed border-[var(--border)] py-2 text-sm text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+              className="w-full rounded-xl border-2 border-dashed border-[var(--border)] py-2.5 text-sm text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
             >
               + Add option
             </button>
@@ -300,14 +315,14 @@ export default function HomePage() {
 
         {/* Expiry */}
         <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="expires-in">
+          <label className="block text-sm font-medium mb-1.5" htmlFor="expires-in">
             Voting closes in
           </label>
           <select
             id="expires-in"
             value={expiresIn}
             onChange={(e) => setExpiresIn(e.target.value)}
-            className="rounded-xl border border-[var(--border)] bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] cursor-pointer"
           >
             {EXPIRY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -317,12 +332,14 @@ export default function HomePage() {
           </select>
         </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && (
+          <p className="text-sm text-red-500" role="alert">{error}</p>
+        )}
 
         <button
           type="submit"
           disabled={loading || !title.trim()}
-          className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-base hover:opacity-90 disabled:opacity-40 transition-opacity"
+          className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-base hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer"
         >
           {loading
             ? (expiresIn === "30d" || expiresIn === "60d" ? "Redirecting to checkout…" : "Creating…")

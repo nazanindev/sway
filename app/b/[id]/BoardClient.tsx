@@ -334,7 +334,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
           )}
           <button
             onClick={copyLink}
-            className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors"
+            className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors cursor-pointer"
           >
             {copied ? "Link copied!" : "Send this Sway →"}
           </button>
@@ -385,7 +385,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
           <button
             onClick={handleExtend}
             disabled={checkoutLoading}
-            className="rounded-xl bg-[var(--accent)] text-white font-semibold px-6 py-3 text-sm hover:opacity-90 disabled:opacity-40 transition-opacity"
+            className="rounded-xl bg-[var(--accent)] text-white font-semibold px-6 py-3 text-sm hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer"
           >
             {checkoutLoading ? "Loading…" : "Reopen this Sway · $1.99"}
           </button>
@@ -472,12 +472,11 @@ function OptionCard({
         {option.notes && <p className="text-sm text-[var(--muted)] mt-1">{option.notes}</p>}
 
         {/* Vote button */}
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-xs text-[var(--muted)] w-12 shrink-0">Vote</span>
+        <div className="mt-3">
           <button
             onClick={onVote}
             disabled={isClosed || !userId}
-            className={`text-sm font-medium px-4 py-1.5 rounded-full border transition-all
+            className={`text-sm font-medium px-4 py-1.5 rounded-full border transition-all cursor-pointer
               ${isMyVote
                 ? "bg-[var(--accent)] border-[var(--accent)] text-white"
                 : "border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -493,9 +492,7 @@ function OptionCard({
         </div>
 
         {/* Emoji reactions */}
-        <div className="mt-2 flex items-start gap-2">
-          <span className="text-xs text-[var(--muted)] w-12 shrink-0 pt-1.5">React</span>
-        <div className="flex gap-2 flex-wrap flex-1">
+        <div className="mt-2 flex gap-1.5 flex-wrap">
           {EMOJIS.map((emoji) => {
             const count = option.reactions[emoji] ?? 0;
             const reacted = option.reactionUsers[emoji]?.includes(userId);
@@ -504,7 +501,7 @@ function OptionCard({
                 key={emoji}
                 onClick={() => onReact(emoji)}
                 disabled={isClosed}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border transition-all
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border transition-all cursor-pointer
                   ${reacted
                     ? "bg-[var(--accent)] border-[var(--accent)] text-white"
                     : "border-[var(--border)] hover:border-[var(--accent)] hover:bg-blue-50"
@@ -516,7 +513,6 @@ function OptionCard({
             );
           })}
         </div>
-        </div>
 
         {/* Comments toggle */}
         <button
@@ -524,7 +520,7 @@ function OptionCard({
             setShowComments((s) => !s);
             if (!showComments) setTimeout(() => inputRef.current?.focus(), 50);
           }}
-          className="mt-3 text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+          className="mt-3 text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
         >
           {option.comments.length > 0
             ? `${option.comments.length} comment${option.comments.length !== 1 ? "s" : ""} · add yours`
@@ -566,7 +562,7 @@ function OptionCard({
                 <button
                   onClick={onCommentSubmit}
                   disabled={!commentInput.trim() || isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity shrink-0"
+                  className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer shrink-0"
                 >
                   {isSubmitting ? "…" : "Send"}
                 </button>
