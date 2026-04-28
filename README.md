@@ -47,7 +47,7 @@ Built mobile-first and optimized for instant sharing.
 
 ## Architecture
 
-Sway is designed as a real-time system from the ground up, assuming active usage and multi-user concurrency.
+Sway is designed as a real-time system from the ground up, assuming active usage, scalable multi-user concurrency, and builtin monetization pathways.
 
 - **Realtime sync** via Supabase channels
 - **Postgres as source of truth** for all board state
