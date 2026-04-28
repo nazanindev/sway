@@ -4,7 +4,7 @@ import { getServiceClient } from "@/lib/supabase/server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
-const EXTENSION_PRICE_CENTS = 199; // $1.99
+const EXTENSION_PRICE_CENTS = 99; // $0.99
 
 export async function POST(req: Request) {
   const ip = getIp(req);
