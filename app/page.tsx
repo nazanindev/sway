@@ -19,11 +19,13 @@ interface OgPreview {
 const emptyOption = (): OptionDraft => ({ title: "", image_url: "", link_url: "", notes: "" });
 
 const EXPIRY_OPTIONS = [
-  { label: "1 hour", value: "1h" },
-  { label: "6 hours", value: "6h" },
-  { label: "24 hours", value: "24h" },
-  { label: "3 days", value: "3d" },
-  { label: "7 days", value: "7d" },
+  { label: "1 hour", value: "1h", price: null },
+  { label: "6 hours", value: "6h", price: null },
+  { label: "24 hours", value: "24h", price: null },
+  { label: "3 days", value: "3d", price: null },
+  { label: "7 days", value: "7d", price: null },
+  { label: "30 days", value: "30d", price: "$1.99" },
+  { label: "60 days", value: "60d", price: "$3.99" },
 ];
 
 export default function HomePage() {
@@ -129,6 +131,11 @@ export default function HomePage() {
       }
 
       localStorage.setItem(`edit:${data.boardId}`, data.editUrl);
+
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
 
       try {
         await navigator.clipboard.writeText(window.location.origin + data.publicUrl);
@@ -303,7 +310,9 @@ export default function HomePage() {
             className="rounded-xl border border-[var(--border)] bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {EXPIRY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}{o.price ? ` — ${o.price}` : ""}
+              </option>
             ))}
           </select>
         </div>
@@ -315,7 +324,11 @@ export default function HomePage() {
           disabled={loading || !title.trim()}
           className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-base hover:opacity-90 disabled:opacity-40 transition-opacity"
         >
-          {loading ? "Creating…" : "Create board →"}
+          {loading
+            ? (expiresIn === "30d" || expiresIn === "60d" ? "Redirecting to checkout…" : "Creating…")
+            : (expiresIn === "30d" || expiresIn === "60d"
+                ? `Create & pay ${EXPIRY_OPTIONS.find(o => o.value === expiresIn)?.price} →`
+                : "Create board →")}
         </button>
       </form>
     </main>
