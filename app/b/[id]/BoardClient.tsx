@@ -38,6 +38,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
   const [options, setOptions] = useState(initialOptions);
   const [userId, setUserId] = useState("");
   const [copied, setCopied] = useState(justCreated);
+  const [editUrl, setEditUrl] = useState<string | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [commentNames, setCommentNames] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
@@ -48,7 +49,8 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 
   useEffect(() => {
     setUserId(getUserId());
-  }, []);
+    setEditUrl(localStorage.getItem(`edit:${board.id}`));
+  }, [board.id]);
 
   // Realtime subscriptions
   useEffect(() => {
@@ -314,6 +316,14 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
           >
             {copied ? "Link copied!" : "Send this Sway →"}
           </button>
+          {editUrl && !isClosed && (
+            <a
+              href={editUrl}
+              className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors"
+            >
+              Edit board
+            </a>
+          )}
         </div>
       </div>
 
