@@ -3,24 +3,55 @@
 import { useState } from "react";
 import type { Board, Option } from "@/lib/supabase/types";
 
-// Edit page is a future extension — for MVP it just shows the board link + basic info.
-// Full option editing (add/remove/reorder) can be wired to a PATCH /api/boards/:id route later.
-
 interface Props {
   board: Pick<Board, "id" | "title" | "description" | "expires_at">;
   initialOptions: Option[];
 }
 
 export default function EditClient({ board, initialOptions }: Props) {
+  const [title, setTitle] = useState(board.title);
+  const [description, setDescription] = useState(board.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
   const [copied, setCopied] = useState(false);
+
   const base = typeof window !== "undefined" ? window.location.origin : "";
   const publicUrl = `${base}/b/${board.id}`;
   const isExpired = new Date(board.expires_at) < new Date();
+
+  function getToken() {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("token") ?? "";
+  }
 
   async function copyLink() {
     await navigator.clipboard.writeText(publicUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  }
+
+  async function save() {
+    setSaving(true);
+    setSaveState("idle");
+    try {
+      const res = await fetch(`/api/boards/${board.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: getToken(), title, description: description || null }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        console.error("[edit] save failed:", error);
+        setSaveState("error");
+      } else {
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 2500);
+      }
+    } catch {
+      setSaveState("error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -34,16 +65,32 @@ export default function EditClient({ board, initialOptions }: Props) {
 
       <div className="rounded-2xl border border-[var(--border)] bg-white p-5 space-y-4">
         <div>
-          <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-1">Title</p>
-          <p className="font-semibold">{board.title}</p>
+          <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-1 block">
+            Title
+          </label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={120}
+            disabled={isExpired}
+            className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold focus:outline-none focus:border-[var(--accent)] disabled:opacity-50"
+          />
         </div>
 
-        {board.description && (
-          <div>
-            <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-1">Description</p>
-            <p className="text-sm">{board.description}</p>
-          </div>
-        )}
+        <div>
+          <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-1 block">
+            Description
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={300}
+            rows={2}
+            disabled={isExpired}
+            placeholder="Optional"
+            className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm resize-none focus:outline-none focus:border-[var(--accent)] disabled:opacity-50"
+          />
+        </div>
 
         <div>
           <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-2">Options</p>
@@ -57,7 +104,19 @@ export default function EditClient({ board, initialOptions }: Props) {
           </ul>
         </div>
 
-        <div className="pt-2">
+        {!isExpired && (
+          <div className="pt-1">
+            <button
+              onClick={save}
+              disabled={saving || !title.trim()}
+              className="w-full rounded-xl bg-[var(--accent)] text-white py-2.5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : saveState === "saved" ? "Saved!" : saveState === "error" ? "Error — try again" : "Save changes"}
+            </button>
+          </div>
+        )}
+
+        <div className={isExpired ? "pt-2" : ""}>
           <button
             onClick={copyLink}
             className="w-full rounded-xl border border-[var(--border)] py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
