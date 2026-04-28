@@ -40,7 +40,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
   const [copied, setCopied] = useState(justCreated);
   const [editUrl, setEditUrl] = useState<string | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [commentNames, setCommentNames] = useState<Record<string, string>>({});
+  const [displayName, setDisplayName] = useState("");
   const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(board.expires_at));
@@ -50,6 +50,17 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
   useEffect(() => {
     setUserId(getUserId());
     setEditUrl(localStorage.getItem(`edit:${board.id}`));
+
+    // Load persistent display name: prefer auth metadata, fall back to localStorage
+    supabase.auth.getUser().then(({ data }) => {
+      const meta = data.user?.user_metadata?.display_name as string | undefined;
+      if (meta) {
+        setDisplayName(meta);
+      } else {
+        const saved = localStorage.getItem("sway_display_name") ?? "";
+        setDisplayName(saved);
+      }
+    });
   }, [board.id]);
 
   // Realtime subscriptions
@@ -261,7 +272,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       body: JSON.stringify({
         option_id: optionId,
         body,
-        user_name: commentNames[optionId]?.trim() || null,
+        user_name: displayName.trim() || null,
       }),
     });
 
@@ -273,6 +284,17 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
         )
       );
       setCommentInputs((c) => ({ ...c, [optionId]: "" }));
+
+      // Persist the display name
+      const trimmed = displayName.trim();
+      if (trimmed) {
+        localStorage.setItem("sway_display_name", trimmed);
+        supabase.auth.getUser().then(({ data }) => {
+          if (data.user) {
+            supabase.auth.updateUser({ data: { display_name: trimmed } });
+          }
+        });
+      }
     }
 
     setSubmitting((s) => ({ ...s, [optionId]: false }));
@@ -344,12 +366,12 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
             isPopular={isPopular(opt)}
             myVotedOptionId={myVotedOptionId}
             commentInput={commentInputs[opt.id] ?? ""}
-            commentName={commentNames[opt.id] ?? ""}
+            commentName={displayName}
             isSubmitting={!!submitting[opt.id]}
             onReact={(emoji) => toggleReaction(opt.id, emoji)}
             onVote={() => castVote(opt.id)}
             onCommentChange={(v) => setCommentInputs((c) => ({ ...c, [opt.id]: v }))}
-            onNameChange={(v) => setCommentNames((c) => ({ ...c, [opt.id]: v }))}
+            onNameChange={setDisplayName}
             onCommentSubmit={() => submitComment(opt.id)}
           />
         ))}
