@@ -39,6 +39,18 @@ Built mobile-first and optimized for instant sharing.
 - Boards created while signed in are tied to a user
 - Persistent display names (localStorage + auth metadata)
 
+### Phase 3: Productionalize _(backlog — collecting user feedback first)_
+
+**Core:**
+- Trending / browse page — public boards feed (`is_public` flag already in DB, no UI yet)
+- Comment @replies / threading — flat comments today, needs `parent_id` + threaded UI
+- Multiple photos per option — single `image_url` today, needs multi-image + carousel
+
+**Nice-to-haves:**
+- Board stats in dashboard (vote / reaction / comment counts per row)
+- Email notification when a board closes
+- Share OG card / download for social
+
 ### Lifecycle
 - Auto-expiring boards (7 days)
 - Optional paid extensions via Stripe

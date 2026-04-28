@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { title, description, options, expires_in } = body as Record<string, unknown>;
+  const { title, description, options, expires_in, emoji_set } = body as Record<string, unknown>;
 
   if (typeof title !== "string" || title.trim().length === 0) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
@@ -83,6 +83,13 @@ export async function POST(req: Request) {
   const authClient = getAuthServerClient();
   const { data: { user } } = await authClient.auth.getUser();
 
+  const DEFAULT_EMOJIS = ["❤️", "🔥", "🤔", "❌"];
+  const ALLOWED_EMOJIS = new Set(["❤️","🔥","🤔","❌","👍","👎","🤷","💯","⭐","💡","💸","🚫"]);
+  let resolvedEmojiSet = DEFAULT_EMOJIS;
+  if (Array.isArray(emoji_set) && emoji_set.length === 4 && emoji_set.every((e) => typeof e === "string" && ALLOWED_EMOJIS.has(e))) {
+    resolvedEmojiSet = emoji_set as string[];
+  }
+
   const { data: board, error: boardErr } = await db
     .from("boards")
     .insert({
@@ -90,6 +97,7 @@ export async function POST(req: Request) {
       description: typeof description === "string" ? description.trim() || null : null,
       expires_at: expiresAt.toISOString(),
       creator_id: user?.id ?? null,
+      emoji_set: resolvedEmojiSet,
     })
     .select()
     .single();

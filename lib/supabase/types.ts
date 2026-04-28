@@ -10,12 +10,14 @@ export type Database = {
           expires_at: string;
           created_at: string;
           creator_id: string | null;
+          emoji_set: string[];
         };
         Insert: Omit<Database["public"]["Tables"]["boards"]["Row"], "id" | "created_at" | "edit_token" | "expires_at"> & {
           id?: string;
           edit_token?: string;
           expires_at?: string;
           creator_id?: string | null;
+          emoji_set?: string[];
         };
         Update: Partial<Database["public"]["Tables"]["boards"]["Row"]>;
         Relationships: [];

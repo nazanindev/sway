@@ -3,6 +3,12 @@
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+const EMOJI_PRESETS = [
+  { label: "Vibes",    emojis: ["❤️", "🔥", "🤔", "❌"] },
+  { label: "Yes / No", emojis: ["👍", "👎", "🤷", "💯"] },
+  { label: "Priority", emojis: ["⭐", "💡", "💸", "🚫"] },
+] as const;
+
 interface OptionDraft {
   title: string;
   image_url: string;
@@ -54,6 +60,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [expiresIn, setExpiresIn] = useState("7d");
+  const [emojiPreset, setEmojiPreset] = useState(0);
   const [previews, setPreviews] = useState<Record<number, OgPreview & { fetching?: boolean }>>({});
   const previewTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
@@ -131,6 +138,7 @@ export default function HomePage() {
           title: title.trim(),
           description: description.trim() || null,
           expires_in: expiresIn,
+          emoji_set: EMOJI_PRESETS[emojiPreset].emojis,
           options: filled.map((o) => ({
             title: o.title.trim(),
             image_url: o.image_url.trim() || null,
@@ -212,6 +220,30 @@ export default function HomePage() {
                 />
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Emoji preset picker */}
+        <div>
+          <p className="text-sm font-medium mb-1.5">Reaction style</p>
+          <div className="flex gap-2">
+            {EMOJI_PRESETS.map((preset, i) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => setEmojiPreset(i)}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm transition-all cursor-pointer
+                  ${emojiPreset === i
+                    ? "border-[var(--accent)] bg-blue-50 text-[var(--accent)] font-medium"
+                    : "border-[var(--border)] bg-white hover:border-[var(--accent)]"
+                  }`}
+              >
+                <span className="block text-base leading-none mb-0.5">
+                  {preset.emojis.join(" ")}
+                </span>
+                <span className="text-xs text-[var(--muted)]">{preset.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 

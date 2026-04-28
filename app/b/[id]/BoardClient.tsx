@@ -6,8 +6,6 @@ import { supabase } from "@/lib/supabase/client";
 import type { Board, Option, Comment } from "@/lib/supabase/types";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
-const EMOJIS = ["❤️", "🔥", "🤔", "❌"] as const;
-
 type EnrichedOption = Option & {
   reactions: Record<string, number>;
   reactionUsers: Record<string, string[]>;
@@ -17,7 +15,7 @@ type EnrichedOption = Option & {
 };
 
 interface Props {
-  board: Pick<Board, "id" | "title" | "description" | "expires_at" | "created_at">;
+  board: Pick<Board, "id" | "title" | "description" | "expires_at" | "created_at" | "emoji_set">;
   initialOptions: EnrichedOption[];
   justCreated: boolean;
   justExtended: boolean;
@@ -365,6 +363,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
             isClosed={isClosed}
             isPopular={isPopular(opt)}
             myVotedOptionId={myVotedOptionId}
+            emojis={board.emoji_set}
             commentInput={commentInputs[opt.id] ?? ""}
             commentName={displayName}
             isSubmitting={!!submitting[opt.id]}
@@ -398,7 +397,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 // ─── OptionCard ───────────────────────────────────────────────────────────────
 
 function OptionCard({
-  option, userId, isClosed, isPopular, myVotedOptionId,
+  option, userId, isClosed, isPopular, myVotedOptionId, emojis,
   commentInput, commentName, isSubmitting,
   onReact, onVote, onCommentChange, onNameChange, onCommentSubmit,
 }: {
@@ -407,6 +406,7 @@ function OptionCard({
   isClosed: boolean;
   isPopular: boolean;
   myVotedOptionId: string | null;
+  emojis: string[];
   commentInput: string;
   commentName: string;
   isSubmitting: boolean;
@@ -493,7 +493,7 @@ function OptionCard({
 
         {/* Emoji reactions */}
         <div className="mt-2 flex gap-1.5 flex-wrap">
-          {EMOJIS.map((emoji) => {
+          {emojis.map((emoji) => {
             const count = option.reactions[emoji] ?? 0;
             const reacted = option.reactionUsers[emoji]?.includes(userId);
             return (

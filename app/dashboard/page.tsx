@@ -2,6 +2,7 @@ import { getAuthServerClient } from "@/lib/supabase/auth-server";
 import { getServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SignOutButton from "./SignOutButton";
+import DeleteButton from "./DeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,7 @@ export default async function DashboardPage() {
                       Edit
                     </a>
                   )}
+                  <DeleteButton boardId={board.id} />
                 </div>
               </div>
             );

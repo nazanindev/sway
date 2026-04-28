@@ -34,7 +34,7 @@ export default async function BoardPage({ params, searchParams }: {
 
   const { data: board } = await db
     .from("boards")
-    .select("id, title, description, expires_at, created_at")
+    .select("id, title, description, expires_at, created_at, emoji_set")
     .eq("id", params.id)
     .single();
 
