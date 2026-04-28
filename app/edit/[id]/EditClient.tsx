@@ -10,6 +10,7 @@ interface OptionDraft {
   link_url: string;
   image_url: string;
   fetchingPreview?: boolean;
+  isNew?: boolean;
 }
 
 interface Props {
@@ -27,10 +28,15 @@ function toOptionDraft(o: Option): OptionDraft {
   };
 }
 
+function newDraft(): OptionDraft {
+  return { id: `new-${Date.now()}`, title: "", notes: "", link_url: "", image_url: "", isNew: true };
+}
+
 export default function EditClient({ board, initialOptions }: Props) {
   const [title, setTitle] = useState(board.title);
   const [description, setDescription] = useState(board.description ?? "");
   const [options, setOptions] = useState<OptionDraft[]>(initialOptions.map(toOptionDraft));
+  const [toDelete, setToDelete] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -39,6 +45,7 @@ export default function EditClient({ board, initialOptions }: Props) {
 
   const publicUrl = `/b/${board.id}`;
   const isExpired = new Date(board.expires_at) < new Date();
+  const visibleOptions = options.filter((o) => !toDelete.has(o.id));
 
   function getToken() {
     if (typeof window === "undefined") return "";
@@ -47,6 +54,18 @@ export default function EditClient({ board, initialOptions }: Props) {
 
   function updateOption(id: string, field: keyof OptionDraft, value: string) {
     setOptions((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)));
+  }
+
+  function addOption() {
+    const draft = newDraft();
+    setOptions((prev) => [...prev, draft]);
+    setExpanded(draft.id);
+  }
+
+  function removeOption(id: string) {
+    if (visibleOptions.length <= 1) return;
+    setToDelete((prev) => new Set(Array.from(prev).concat(id)));
+    if (expanded === id) setExpanded(null);
   }
 
   const fetchOgPreview = useCallback(async (id: string, url: string) => {
@@ -92,13 +111,17 @@ export default function EditClient({ board, initialOptions }: Props) {
     setSaveError(false);
     const token = getToken();
     try {
+      const existing = visibleOptions.filter((o) => !o.isNew);
+      const created = visibleOptions.filter((o) => o.isNew);
+      const deleted = Array.from(toDelete).filter((id) => !id.startsWith("new-"));
+
       const results = await Promise.all([
         fetch(`/api/boards/${board.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, title, description: description || null }),
         }),
-        ...options.map((o) =>
+        ...existing.map((o) =>
           fetch(`/api/options/${o.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -109,6 +132,27 @@ export default function EditClient({ board, initialOptions }: Props) {
               link_url: o.link_url || null,
               image_url: o.image_url || null,
             }),
+          })
+        ),
+        ...created.map((o) =>
+          fetch(`/api/options`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token,
+              board_id: board.id,
+              title: o.title,
+              notes: o.notes || null,
+              link_url: o.link_url || null,
+              image_url: o.image_url || null,
+            }),
+          })
+        ),
+        ...deleted.map((id) =>
+          fetch(`/api/options/${id}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
           })
         ),
       ]);
@@ -165,16 +209,17 @@ export default function EditClient({ board, initialOptions }: Props) {
         <div>
           <p className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-2">Options</p>
           <div className="space-y-2">
-            {options.map((o, i) => (
+            {visibleOptions.map((o, i) => (
               <div key={o.id} className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
                 <div className="flex items-center gap-2 px-3 py-2">
                   <span className="text-[var(--muted)] text-sm w-5 shrink-0">{i + 1}</span>
                   <input
                     value={o.title}
                     onChange={(e) => updateOption(o.id, "title", e.target.value)}
+                    placeholder={`Option ${i + 1}`}
                     maxLength={80}
                     disabled={isExpired}
-                    className="flex-1 bg-transparent text-sm font-medium outline-none disabled:opacity-50"
+                    className="flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-gray-300 disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -183,6 +228,16 @@ export default function EditClient({ board, initialOptions }: Props) {
                   >
                     {expanded === o.id ? "less" : "more"}
                   </button>
+                  {visibleOptions.length > 1 && !isExpired && (
+                    <button
+                      type="button"
+                      onClick={() => removeOption(o.id)}
+                      className="text-[var(--muted)] hover:text-red-500 text-lg leading-none px-1"
+                      aria-label="Remove option"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
 
                 {expanded === o.id && (
@@ -233,6 +288,16 @@ export default function EditClient({ board, initialOptions }: Props) {
                 )}
               </div>
             ))}
+
+            {visibleOptions.length < 6 && !isExpired && (
+              <button
+                type="button"
+                onClick={addOption}
+                className="w-full rounded-xl border-2 border-dashed border-[var(--border)] py-2 text-sm text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+              >
+                + Add option
+              </button>
+            )}
           </div>
         </div>
 
@@ -241,7 +306,7 @@ export default function EditClient({ board, initialOptions }: Props) {
           {!isExpired && (
             <button
               onClick={save}
-              disabled={saving || !title.trim() || options.some((o) => !o.title.trim())}
+              disabled={saving || !title.trim() || visibleOptions.some((o) => !o.title.trim())}
               className="w-full rounded-xl bg-[var(--accent)] text-white py-2.5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Saving…" : saveError ? "Error — try again" : "Save & view board →"}

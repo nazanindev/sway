@@ -82,3 +82,56 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const ip = getIp(req);
+  if (!rateLimit(`options-delete:${ip}`, 20, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { token } = body as Record<string, unknown>;
+  if (typeof token !== "string" || !token) {
+    return NextResponse.json({ error: "Missing token" }, { status: 401 });
+  }
+
+  const db = getServiceClient();
+
+  const { data: option } = await db
+    .from("options")
+    .select("board_id")
+    .eq("id", params.id)
+    .single();
+
+  if (!option) {
+    return NextResponse.json({ error: "Option not found" }, { status: 404 });
+  }
+
+  const { data: board } = await db
+    .from("boards")
+    .select("edit_token")
+    .eq("id", option.board_id)
+    .single();
+
+  if (!board || board.edit_token !== token) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 403 });
+  }
+
+  const { error } = await db.from("options").delete().eq("id", params.id);
+
+  if (error) {
+    console.error("[options delete] error:", error);
+    return NextResponse.json({ error: "Failed to delete option" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
