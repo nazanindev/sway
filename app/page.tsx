@@ -7,6 +7,8 @@ const EMOJI_PRESETS = [
   { label: "Vibes",    emojis: ["❤️", "🔥", "🤔", "❌"] },
   { label: "Yes / No", emojis: ["👍", "👎", "🤷", "💯"] },
   { label: "Priority", emojis: ["⭐", "💡", "💸", "🚫"] },
+  { label: "Hype",     emojis: ["😍", "🚀", "💀", "🤌"] },
+  { label: "Mood",     emojis: ["✨", "😭", "💅", "🫡"] },
 ] as const;
 
 interface OptionDraft {
@@ -226,20 +228,20 @@ export default function HomePage() {
         {/* Emoji preset picker */}
         <div>
           <p className="text-sm font-medium mb-1.5">Reaction style</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {EMOJI_PRESETS.map((preset, i) => (
               <button
                 key={preset.label}
                 type="button"
                 onClick={() => setEmojiPreset(i)}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm transition-all cursor-pointer
+                className={`rounded-xl border px-3 py-2 text-center transition-all cursor-pointer w-[calc(33.333%-6px)] sm:flex-1
                   ${emojiPreset === i
                     ? "border-[var(--accent)] bg-blue-50 text-[var(--accent)] font-medium"
                     : "border-[var(--border)] bg-white hover:border-[var(--accent)]"
                   }`}
               >
-                <span className="block text-base leading-none mb-0.5">
-                  {preset.emojis.join(" ")}
+                <span className="block text-sm leading-none mb-1">
+                  {preset.emojis.join("")}
                 </span>
                 <span className="text-xs text-[var(--muted)]">{preset.label}</span>
               </button>

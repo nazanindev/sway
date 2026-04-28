@@ -84,7 +84,13 @@ export async function POST(req: Request) {
   const { data: { user } } = await authClient.auth.getUser();
 
   const DEFAULT_EMOJIS = ["❤️", "🔥", "🤔", "❌"];
-  const ALLOWED_EMOJIS = new Set(["❤️","🔥","🤔","❌","👍","👎","🤷","💯","⭐","💡","💸","🚫"]);
+  const ALLOWED_EMOJIS = new Set([
+    "❤️","🔥","🤔","❌",
+    "👍","👎","🤷","💯",
+    "⭐","💡","💸","🚫",
+    "😍","🚀","💀","🤌",
+    "✨","😭","💅","🫡",
+  ]);
   let resolvedEmojiSet = DEFAULT_EMOJIS;
   if (Array.isArray(emoji_set) && emoji_set.length === 4 && emoji_set.every((e) => typeof e === "string" && ALLOWED_EMOJIS.has(e))) {
     resolvedEmojiSet = emoji_set as string[];
