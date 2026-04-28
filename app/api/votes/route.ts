@@ -26,6 +26,20 @@ export async function POST(req: Request) {
 
   const db = getServiceClient();
 
+  // Verify board exists and is still open
+  const { data: board } = await db
+    .from("boards")
+    .select("id, expires_at")
+    .eq("id", board_id)
+    .single();
+
+  if (!board) {
+    return NextResponse.json({ error: "board not found" }, { status: 404 });
+  }
+  if (board.expires_at && new Date(board.expires_at) < new Date()) {
+    return NextResponse.json({ error: "Board is closed" }, { status: 403 });
+  }
+
   // Verify option belongs to the board (prevents cross-board vote manipulation)
   const { data: option } = await db
     .from("options")

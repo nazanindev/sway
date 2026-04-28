@@ -29,6 +29,13 @@ function getMeta(html: string, ...names: string[]): string | null {
   return null;
 }
 
+const PRIVATE_IP_RE =
+  /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|::1$|fc|fd)/i;
+
+function isPrivateHostname(hostname: string): boolean {
+  return PRIVATE_IP_RE.test(hostname) || hostname === "localhost";
+}
+
 export async function GET(req: Request) {
   const ip = getIp(req);
   if (!rateLimit(`og-preview:${ip}`, 30, 60_000)) {
@@ -43,6 +50,15 @@ export async function GET(req: Request) {
   }
 
   try {
+    const { hostname } = new URL(url);
+    if (isPrivateHostname(hostname)) {
+      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+  }
+
+  try {
     const res = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; Swaybot/1.0; +https://sway.app)",
@@ -53,6 +69,11 @@ export async function GET(req: Request) {
     });
 
     if (!res.ok) return NextResponse.json({ image: null, title: null, description: null });
+
+    const contentLength = Number(res.headers.get("content-length") ?? 0);
+    if (contentLength > 1_000_000) {
+      return NextResponse.json({ image: null, title: null, description: null });
+    }
 
     // Only read the <head> — avoids parsing megabytes of HTML for large pages.
     const text = await res.text();
