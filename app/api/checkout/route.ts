@@ -4,7 +4,7 @@ import { getServiceClient } from "@/lib/supabase/server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
-const EXTENSION_PRICE_CENTS = 300; // $3
+const EXTENSION_PRICE_CENTS = 99; // $0.99
 
 export async function POST(req: Request) {
   const ip = getIp(req);
@@ -30,7 +30,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Board not found" }, { status: 404 });
   }
 
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "";
+  const base = process.env.NEXT_PUBLIC_BASE_URL;
+  if (!base) {
+    return NextResponse.json({ error: "NEXT_PUBLIC_BASE_URL is not configured" }, { status: 500 });
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
