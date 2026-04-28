@@ -38,6 +38,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
   const [options, setOptions] = useState(initialOptions);
   const [userId, setUserId] = useState("");
   const [copied, setCopied] = useState(justCreated);
+  const [editUrl, setEditUrl] = useState<string | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [commentNames, setCommentNames] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
@@ -48,7 +49,8 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 
   useEffect(() => {
     setUserId(getUserId());
-  }, []);
+    setEditUrl(localStorage.getItem(`edit:${board.id}`));
+  }, [board.id]);
 
   // Realtime subscriptions
   useEffect(() => {
@@ -314,6 +316,14 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
           >
             {copied ? "Link copied!" : "Send this Sway →"}
           </button>
+          {editUrl && !isClosed && (
+            <a
+              href={editUrl}
+              className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors"
+            >
+              Edit board
+            </a>
+          )}
         </div>
       </div>
 
@@ -440,7 +450,8 @@ function OptionCard({
         {option.notes && <p className="text-sm text-[var(--muted)] mt-1">{option.notes}</p>}
 
         {/* Vote button */}
-        <div className="mt-3">
+        <div className="mt-3 flex items-center gap-2">
+          <span className="text-xs text-[var(--muted)] w-12 shrink-0">Vote</span>
           <button
             onClick={onVote}
             disabled={isClosed || !userId}
@@ -460,7 +471,9 @@ function OptionCard({
         </div>
 
         {/* Emoji reactions */}
-        <div className="flex gap-2 mt-3 flex-wrap">
+        <div className="mt-2 flex items-start gap-2">
+          <span className="text-xs text-[var(--muted)] w-12 shrink-0 pt-1.5">React</span>
+        <div className="flex gap-2 flex-wrap flex-1">
           {EMOJIS.map((emoji) => {
             const count = option.reactions[emoji] ?? 0;
             const reacted = option.reactionUsers[emoji]?.includes(userId);
@@ -480,6 +493,7 @@ function OptionCard({
               </button>
             );
           })}
+        </div>
         </div>
 
         {/* Comments toggle */}

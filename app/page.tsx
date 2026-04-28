@@ -29,6 +29,8 @@ const EXPIRY_OPTIONS = [
 export default function HomePage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [boardExpanded, setBoardExpanded] = useState(false);
   const [options, setOptions] = useState<OptionDraft[]>([emptyOption(), emptyOption()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +111,7 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
+          description: description.trim() || null,
           expires_in: expiresIn,
           options: filled.map((o) => ({
             title: o.title.trim(),
@@ -151,18 +154,41 @@ export default function HomePage() {
         {/* Board title */}
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="board-title">
-            What are you deciding?
+            What are you deciding? <span className="text-[var(--accent)]">*</span>
           </label>
-          <input
-            id="board-title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Which apartment? Best logo? Dinner spot?"
-            required
-            maxLength={120}
-            className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-base outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          />
+          <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+            <div className="flex items-center gap-2 px-4">
+              <input
+                id="board-title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Which apartment? Best logo? Dinner spot?"
+                required
+                maxLength={120}
+                className="flex-1 py-3 text-base outline-none bg-transparent"
+              />
+              <button
+                type="button"
+                onClick={() => setBoardExpanded((v) => !v)}
+                className="text-xs text-[var(--muted)] hover:text-[var(--text)] px-1 shrink-0"
+              >
+                {boardExpanded ? "less" : "more"}
+              </button>
+            </div>
+            {boardExpanded && (
+              <div className="border-t border-[var(--border)] px-4 py-3 bg-gray-50">
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add a description (optional)"
+                  maxLength={300}
+                  rows={2}
+                  className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Options */}

@@ -1,8 +1,30 @@
+import type { Metadata } from "next";
 import { getServiceClient } from "@/lib/supabase/server";
 import BoardClient from "./BoardClient";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const db = getServiceClient();
+  const { data: board } = await db
+    .from("boards")
+    .select("title, description")
+    .eq("id", params.id)
+    .single();
+
+  if (!board) return { title: "Sway" };
+
+  const desc = board.description ?? "Help pick — vote on Sway";
+  return {
+    title: `${board.title} — Sway`,
+    description: desc,
+    openGraph: {
+      title: board.title,
+      description: desc,
+    },
+  };
+}
 
 export default async function BoardPage({ params, searchParams }: {
   params: { id: string };

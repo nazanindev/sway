@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
+import { rateLimit, getIp } from "@/lib/rate-limit";
+
+const MAX_TITLE_LEN = 120;
+const MAX_NOTES_LEN = 300;
 
 export async function GET(
   _req: Request,
@@ -51,4 +55,62 @@ export async function GET(
   }));
 
   return NextResponse.json({ board, options: enrichedOptions });
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const ip = getIp(req);
+  if (!rateLimit(`boards-patch:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { token, title, description } = body as Record<string, unknown>;
+
+  if (typeof token !== "string" || !token) {
+    return NextResponse.json({ error: "Missing token" }, { status: 401 });
+  }
+  if (typeof title !== "string" || title.trim().length === 0) {
+    return NextResponse.json({ error: "title is required" }, { status: 400 });
+  }
+  if (title.trim().length > MAX_TITLE_LEN) {
+    return NextResponse.json({ error: "title too long" }, { status: 400 });
+  }
+  if (typeof description === "string" && description.length > MAX_NOTES_LEN) {
+    return NextResponse.json({ error: "description too long" }, { status: 400 });
+  }
+
+  const db = getServiceClient();
+  const { data: board } = await db
+    .from("boards")
+    .select("edit_token")
+    .eq("id", params.id)
+    .single();
+
+  if (!board || board.edit_token !== token) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 403 });
+  }
+
+  const { error } = await db
+    .from("boards")
+    .update({
+      title: title.trim(),
+      description: typeof description === "string" ? description.trim() || null : null,
+    })
+    .eq("id", params.id);
+
+  if (error) {
+    console.error("[boards patch] update error:", error);
+    return NextResponse.json({ error: "Failed to update board" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
