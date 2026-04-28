@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
+import { getAuthServerClient } from "@/lib/supabase/auth-server";
 import { isValidUrl } from "@/lib/validate-url";
 import { rateLimit, getIp } from "@/lib/rate-limit";
 
@@ -70,12 +71,16 @@ export async function POST(req: Request) {
 
   const db = getServiceClient();
 
+  const authClient = getAuthServerClient();
+  const { data: { user } } = await authClient.auth.getUser();
+
   const { data: board, error: boardErr } = await db
     .from("boards")
     .insert({
       title: title.trim(),
       description: typeof description === "string" ? description.trim() || null : null,
       expires_at: expiresAt.toISOString(),
+      creator_id: user?.id ?? null,
     })
     .select()
     .single();
