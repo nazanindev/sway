@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import Stripe from "stripe";
 import { getServiceClient } from "@/lib/supabase/server";
 import { getAuthServerClient } from "@/lib/supabase/auth-server";
 import { isValidUrl } from "@/lib/validate-url";
@@ -7,7 +8,8 @@ import { rateLimit, getIp } from "@/lib/rate-limit";
 const MAX_OPTIONS = 6;
 const MAX_TITLE_LEN = 120;
 const MAX_NOTES_LEN = 300;
-const MAX_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MAX_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days free cap
+const GRACE_MS = 60 * 60 * 1000; // 1h grace while awaiting payment
 
 const EXPIRY_MAP: Record<string, number> = {
   "1h":  1 * 60 * 60 * 1000,
@@ -15,6 +17,11 @@ const EXPIRY_MAP: Record<string, number> = {
   "24h": 24 * 60 * 60 * 1000,
   "3d":  3 * 24 * 60 * 60 * 1000,
   "7d":  7 * 24 * 60 * 60 * 1000,
+};
+
+const PAID_DURATIONS: Record<string, { ms: number; priceCents: number; label: string }> = {
+  "30d": { ms: 30 * 24 * 60 * 60 * 1000, priceCents: 199, label: "30-day board" },
+  "60d": { ms: 60 * 24 * 60 * 60 * 1000, priceCents: 399, label: "60-day board" },
 };
 
 export async function POST(req: Request) {
@@ -45,10 +52,12 @@ export async function POST(req: Request) {
     );
   }
 
+  const isPaidDuration = typeof expires_in === "string" && expires_in in PAID_DURATIONS;
   const expiryMs = typeof expires_in === "string" && EXPIRY_MAP[expires_in]
     ? EXPIRY_MAP[expires_in]
     : MAX_EXPIRY_MS;
-  const expiresAt = new Date(Date.now() + Math.min(expiryMs, MAX_EXPIRY_MS));
+  // Paid durations get a 1h grace period; payment webhook extends to the full window.
+  const expiresAt = new Date(Date.now() + (isPaidDuration ? GRACE_MS : Math.min(expiryMs, MAX_EXPIRY_MS)));
 
   for (const opt of options) {
     if (typeof opt !== "object" || opt === null) {
@@ -106,9 +115,38 @@ export async function POST(req: Request) {
   }
 
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "";
-  return NextResponse.json({
-    boardId: board.id,
-    publicUrl: `${base}/b/${board.id}`,
-    editUrl: `${base}/edit/${board.id}?token=${board.edit_token}`,
-  });
+  const publicUrl = `${base}/b/${board.id}`;
+  const editUrl = `${base}/edit/${board.id}?token=${board.edit_token}`;
+
+  if (isPaidDuration && base) {
+    const plan = PAID_DURATIONS[expires_in as string];
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-04-10" });
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: plan.priceCents,
+            product_data: { name: `${plan.label}: "${board.title}"` },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: { board_id: board.id, duration: expires_in as string },
+      success_url: `${publicUrl}?extended=1`,
+      cancel_url: publicUrl,
+    });
+
+    await db.from("payments").insert({
+      board_id: board.id,
+      stripe_session_id: session.id,
+      amount_cents: plan.priceCents,
+      status: "pending",
+    });
+
+    return NextResponse.json({ boardId: board.id, publicUrl, editUrl, checkoutUrl: session.url });
+  }
+
+  return NextResponse.json({ boardId: board.id, publicUrl, editUrl });
 }

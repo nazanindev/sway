@@ -32,10 +32,18 @@ export async function POST(req: Request) {
 
   const db = getServiceClient();
 
-  // Check option exists (also validates option_id is a real UUID)
-  const { data: option } = await db.from("options").select("id").eq("id", option_id).single();
+  // Check option exists and board is still open
+  const { data: option } = await db
+    .from("options")
+    .select("id, boards(expires_at)")
+    .eq("id", option_id)
+    .single();
   if (!option) {
     return NextResponse.json({ error: "option not found" }, { status: 404 });
+  }
+  const board = (option as unknown as { boards: { expires_at: string | null } | null }).boards;
+  if (board?.expires_at && new Date(board.expires_at) < new Date()) {
+    return NextResponse.json({ error: "Board is closed" }, { status: 403 });
   }
 
   // Upsert: if same (option, user, emoji) exists, this is a toggle → delete

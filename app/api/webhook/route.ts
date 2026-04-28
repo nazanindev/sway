@@ -30,10 +30,17 @@ export async function POST(req: Request) {
     if (boardId && session.payment_status === "paid") {
       const db = getServiceClient();
 
-      // Extend expiry by 7 days from now
+      const DURATION_MS: Record<string, number> = {
+        "7d":  7  * 24 * 60 * 60 * 1000,
+        "30d": 30 * 24 * 60 * 60 * 1000,
+        "60d": 60 * 24 * 60 * 60 * 1000,
+      };
+      const duration = session.metadata?.duration ?? "7d";
+      const ms = DURATION_MS[duration] ?? DURATION_MS["7d"];
+
       await db
         .from("boards")
-        .update({ expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() })
+        .update({ expires_at: new Date(Date.now() + ms).toISOString() })
         .eq("id", boardId);
 
       await db

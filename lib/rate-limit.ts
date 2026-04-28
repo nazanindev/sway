@@ -17,10 +17,14 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   return true;
 }
 
-// Return the client IP from Next.js request headers
+// Return the client IP from Next.js request headers.
+// On Vercel, x-real-ip is set by the edge and cannot be spoofed.
+// Fall back to the *last* entry in x-forwarded-for (also Vercel-appended),
+// never the first (which is user-controlled).
 export function getIp(req: Request): string {
   return (
-    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    req.headers.get("x-real-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ??
     "unknown"
   );
 }
