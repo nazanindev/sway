@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { Board, Option } from "@/lib/supabase/types";
 
 interface OptionDraft {
@@ -9,6 +9,7 @@ interface OptionDraft {
   notes: string;
   link_url: string;
   image_url: string;
+  fetchingPreview?: boolean;
 }
 
 interface Props {
@@ -32,11 +33,11 @@ export default function EditClient({ board, initialOptions }: Props) {
   const [options, setOptions] = useState<OptionDraft[]>(initialOptions.map(toOptionDraft));
   const [expanded, setExpanded] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const previewTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const base = typeof window !== "undefined" ? window.location.origin : "";
-  const publicUrl = `${base}/b/${board.id}`;
+  const publicUrl = `/b/${board.id}`;
   const isExpired = new Date(board.expires_at) < new Date();
 
   function getToken() {
@@ -48,15 +49,47 @@ export default function EditClient({ board, initialOptions }: Props) {
     setOptions((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)));
   }
 
+  const fetchOgPreview = useCallback(async (id: string, url: string) => {
+    if (!url.startsWith("http")) return;
+    setOptions((prev) => prev.map((o) => (o.id === id ? { ...o, fetchingPreview: true } : o)));
+    try {
+      const res = await fetch(`/api/og-preview?url=${encodeURIComponent(url)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setOptions((prev) =>
+          prev.map((o) => {
+            if (o.id !== id) return o;
+            return {
+              ...o,
+              fetchingPreview: false,
+              image_url: o.image_url || data.image || o.image_url,
+              title: o.title || data.title || o.title,
+            };
+          })
+        );
+      }
+    } catch {
+      setOptions((prev) => prev.map((o) => (o.id === id ? { ...o, fetchingPreview: false } : o)));
+    }
+  }, []);
+
+  function handleLinkChange(id: string, value: string) {
+    updateOption(id, "link_url", value);
+    clearTimeout(previewTimers.current[id]);
+    if (value.startsWith("http")) {
+      previewTimers.current[id] = setTimeout(() => fetchOgPreview(id, value), 800);
+    }
+  }
+
   async function copyLink() {
-    await navigator.clipboard.writeText(publicUrl);
+    await navigator.clipboard.writeText(window.location.origin + publicUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   }
 
   async function save() {
     setSaving(true);
-    setSaveState("idle");
+    setSaveError(false);
     const token = getToken();
     try {
       const results = await Promise.all([
@@ -80,15 +113,13 @@ export default function EditClient({ board, initialOptions }: Props) {
         ),
       ]);
 
-      const allOk = results.every((r) => r.ok);
-      if (!allOk) {
-        setSaveState("error");
+      if (results.every((r) => r.ok)) {
+        window.location.href = publicUrl;
       } else {
-        setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 2500);
+        setSaveError(true);
       }
     } catch {
-      setSaveState("error");
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
@@ -156,14 +187,19 @@ export default function EditClient({ board, initialOptions }: Props) {
 
                 {expanded === o.id && (
                   <div className="border-t border-[var(--border)] px-4 py-3 space-y-2 bg-gray-50">
-                    <input
-                      type="url"
-                      value={o.link_url}
-                      onChange={(e) => updateOption(o.id, "link_url", e.target.value)}
-                      placeholder="Link URL (optional)"
-                      disabled={isExpired}
-                      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] disabled:opacity-50"
-                    />
+                    <div className="relative">
+                      <input
+                        type="url"
+                        value={o.link_url}
+                        onChange={(e) => handleLinkChange(o.id, e.target.value)}
+                        placeholder="Link URL (paste to auto-preview)"
+                        disabled={isExpired}
+                        className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] disabled:opacity-50"
+                      />
+                      {o.fetchingPreview && (
+                        <span className="absolute right-3 top-2 text-xs text-[var(--muted)] animate-pulse">fetching…</span>
+                      )}
+                    </div>
                     <div className="flex gap-2 items-center">
                       <input
                         type="url"
@@ -176,6 +212,7 @@ export default function EditClient({ board, initialOptions }: Props) {
                       {o.image_url && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
+                          key={o.image_url}
                           src={o.image_url}
                           alt=""
                           className="w-10 h-10 rounded-lg object-cover border border-[var(--border)] shrink-0"
@@ -207,7 +244,7 @@ export default function EditClient({ board, initialOptions }: Props) {
               disabled={saving || !title.trim() || options.some((o) => !o.title.trim())}
               className="w-full rounded-xl bg-[var(--accent)] text-white py-2.5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving…" : saveState === "saved" ? "Saved!" : saveState === "error" ? "Error — try again" : "Save changes"}
+              {saving ? "Saving…" : saveError ? "Error — try again" : "Save & view board →"}
             </button>
           )}
           <button
@@ -216,12 +253,6 @@ export default function EditClient({ board, initialOptions }: Props) {
           >
             {copied ? "Copied!" : "Copy share link"}
           </button>
-          <a
-            href={`/b/${board.id}`}
-            className="block text-center text-sm text-[var(--accent)] hover:underline"
-          >
-            View board →
-          </a>
         </div>
       </div>
     </main>
