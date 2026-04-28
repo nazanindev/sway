@@ -387,7 +387,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
             disabled={checkoutLoading}
             className="rounded-xl bg-[var(--accent)] text-white font-semibold px-6 py-3 text-sm hover:opacity-90 disabled:opacity-40 transition-opacity"
           >
-            {checkoutLoading ? "Loading…" : "Reopen this Sway · $3"}
+            {checkoutLoading ? "Loading…" : "Reopen this Sway · $1.99"}
           </button>
         </div>
       )}
