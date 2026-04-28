@@ -3,6 +3,22 @@
 import { useState, useCallback, useRef } from "react";
 import type { Board, Option } from "@/lib/supabase/types";
 
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 6l4 4 4-4" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </svg>
+  );
+}
+
 interface OptionDraft {
   id: string;
   title: string;
@@ -224,18 +240,19 @@ export default function EditClient({ board, initialOptions }: Props) {
                   <button
                     type="button"
                     onClick={() => setExpanded(expanded === o.id ? null : o.id)}
-                    className="text-xs text-[var(--muted)] hover:text-[var(--text)] px-1"
+                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer p-1"
+                    aria-label={expanded === o.id ? "Collapse option" : "Expand option"}
                   >
-                    {expanded === o.id ? "less" : "more"}
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expanded === o.id ? "rotate-180" : ""}`} />
                   </button>
                   {visibleOptions.length > 1 && !isExpired && (
                     <button
                       type="button"
                       onClick={() => removeOption(o.id)}
-                      className="text-[var(--muted)] hover:text-red-500 text-lg leading-none px-1"
+                      className="text-[var(--muted)] hover:text-red-500 transition-colors cursor-pointer p-1"
                       aria-label="Remove option"
                     >
-                      ×
+                      <XIcon className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -307,14 +324,14 @@ export default function EditClient({ board, initialOptions }: Props) {
             <button
               onClick={save}
               disabled={saving || !title.trim() || visibleOptions.some((o) => !o.title.trim())}
-              className="w-full rounded-xl bg-[var(--accent)] text-white py-2.5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-[var(--accent)] text-white py-2.5 text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Saving…" : saveError ? "Error — try again" : "Save & view board →"}
             </button>
           )}
           <button
             onClick={copyLink}
-            className="w-full rounded-xl border border-[var(--border)] py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
+            className="w-full rounded-xl border border-[var(--border)] py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
           >
             {copied ? "Copied!" : "Copy share link"}
           </button>
