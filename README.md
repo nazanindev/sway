@@ -5,7 +5,7 @@ A lightweight real-time app for group decision-making.
 Create a board, share options, and collect votes, reactions, and comments — no account required.
 
 ## Demo
-**🔗 Live Demo** https://sway-tan.vercel.app/
+**🔗 Live** https://www.sendasway.com/
 
 |<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/dbad75d5-1acd-4840-91c8-c170014dd127" /> |<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/720e0cfb-91ab-47fa-bafc-b6e1642b95b1" /> |
 |---|---|
