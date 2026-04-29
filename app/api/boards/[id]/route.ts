@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
+import { getAuthServerClient } from "@/lib/supabase/auth-server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
 
 const MAX_TITLE_LEN = 120;
@@ -110,6 +111,34 @@ export async function PATCH(
   if (error) {
     console.error("[boards patch] update error:", error);
     return NextResponse.json({ error: "Failed to update board" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const auth = getAuthServerClient();
+  const { data: { user } } = await auth.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const db = getServiceClient();
+  const { data: board } = await db
+    .from("boards")
+    .select("creator_id")
+    .eq("id", params.id)
+    .single();
+
+  if (!board || board.creator_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { error } = await db.from("boards").delete().eq("id", params.id);
+  if (error) {
+    console.error("[boards delete] error:", error);
+    return NextResponse.json({ error: "Failed to delete board" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

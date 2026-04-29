@@ -6,8 +6,6 @@ import { supabase } from "@/lib/supabase/client";
 import type { Board, Option, Comment } from "@/lib/supabase/types";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
-const EMOJIS = ["❤️", "🔥", "🤔", "❌"] as const;
-
 type EnrichedOption = Option & {
   reactions: Record<string, number>;
   reactionUsers: Record<string, string[]>;
@@ -17,7 +15,7 @@ type EnrichedOption = Option & {
 };
 
 interface Props {
-  board: Pick<Board, "id" | "title" | "description" | "expires_at" | "created_at">;
+  board: Pick<Board, "id" | "title" | "description" | "expires_at" | "created_at" | "emoji_set">;
   initialOptions: EnrichedOption[];
   justCreated: boolean;
   justExtended: boolean;
@@ -365,6 +363,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
             isClosed={isClosed}
             isPopular={isPopular(opt)}
             myVotedOptionId={myVotedOptionId}
+            emojis={board.emoji_set}
             commentInput={commentInputs[opt.id] ?? ""}
             commentName={displayName}
             isSubmitting={!!submitting[opt.id]}
@@ -398,7 +397,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 // ─── OptionCard ───────────────────────────────────────────────────────────────
 
 function OptionCard({
-  option, userId, isClosed, isPopular, myVotedOptionId,
+  option, userId, isClosed, isPopular, myVotedOptionId, emojis,
   commentInput, commentName, isSubmitting,
   onReact, onVote, onCommentChange, onNameChange, onCommentSubmit,
 }: {
@@ -407,6 +406,7 @@ function OptionCard({
   isClosed: boolean;
   isPopular: boolean;
   myVotedOptionId: string | null;
+  emojis: string[];
   commentInput: string;
   commentName: string;
   isSubmitting: boolean;
@@ -471,29 +471,29 @@ function OptionCard({
         </div>
         {option.notes && <p className="text-sm text-[var(--muted)] mt-1">{option.notes}</p>}
 
-        {/* Vote button */}
+        {/* Vote — primary action: full-width, rectangular, dominant */}
         <div className="mt-3">
           <button
             onClick={onVote}
             disabled={isClosed || !userId}
-            className={`text-sm font-medium px-4 py-1.5 rounded-full border transition-all cursor-pointer
+            className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-all duration-150 cursor-pointer
               ${isMyVote
-                ? "bg-[var(--accent)] border-[var(--accent)] text-white"
-                : "border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                ? "bg-[var(--accent)] border border-[var(--accent)] text-white"
+                : "bg-gray-50 border border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-blue-50 hover:text-[var(--accent)]"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {voteLabel}
             {option.voteCount > 0 && (
-              <span className="ml-1.5 opacity-70 tabular-nums">
+              <span className="ml-1.5 opacity-60 tabular-nums font-normal">
                 {option.voteCount}
               </span>
             )}
           </button>
         </div>
 
-        {/* Emoji reactions */}
-        <div className="mt-2 flex gap-1.5 flex-wrap">
-          {EMOJIS.map((emoji) => {
+        {/* Reactions — secondary: small chips, clearly subordinate */}
+        <div className="mt-2.5 pt-2.5 border-t border-[var(--border)] flex gap-1.5 flex-wrap">
+          {emojis.map((emoji) => {
             const count = option.reactions[emoji] ?? 0;
             const reacted = option.reactionUsers[emoji]?.includes(userId);
             return (
@@ -501,14 +501,14 @@ function OptionCard({
                 key={emoji}
                 onClick={() => onReact(emoji)}
                 disabled={isClosed}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border transition-all cursor-pointer
+                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-all duration-150 cursor-pointer
                   ${reacted
                     ? "bg-[var(--accent)] border-[var(--accent)] text-white"
-                    : "border-[var(--border)] hover:border-[var(--accent)] hover:bg-blue-50"
+                    : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:bg-blue-50 hover:text-[var(--accent)]"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <span>{emoji}</span>
-                {count > 0 && <span className="font-medium tabular-nums">{count}</span>}
+                {count > 0 && <span className="tabular-nums">{count}</span>}
               </button>
             );
           })}
