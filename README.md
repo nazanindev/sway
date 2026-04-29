@@ -5,9 +5,9 @@ A lightweight real-time app for group decision-making.
 Create a board, share options, and collect votes, reactions, and comments — no account required.
 
 ## Demo
-**🔗 Live** https://www.sendasway.com/
+**🔗** https://www.sendasway.com/
 
-|<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/dbad75d5-1acd-4840-91c8-c170014dd127" /> |<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/720e0cfb-91ab-47fa-bafc-b6e1642b95b1" /> |
+|<img width="500" height="770" alt="image" src="https://github.com/user-attachments/assets/ae3c0493-4467-428e-b725-f56c50b1c366" /> |<img width="500" height="650" alt="image" src="https://github.com/user-attachments/assets/7ec85062-09ca-4843-ae05-333679711c31" /> |
 |---|---|
 
 ---
