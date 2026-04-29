@@ -10,9 +10,6 @@ Create a board, share options, and collect votes, reactions, and comments — no
 |<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/dbad75d5-1acd-4840-91c8-c170014dd127" /> |<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/720e0cfb-91ab-47fa-bafc-b6e1642b95b1" /> |
 |---|---|
 
-<img width="1004" height="1758" alt="image" src="" />
-<img width="1022" height="1850" alt="image" src="" />
-
 ---
 
 ## Why Sway?
