@@ -7,8 +7,11 @@ Create a board, share options, and collect votes, reactions, and comments — no
 ## Demo
 **🔗 Live Demo** https://sway-tan.vercel.app/
 
-|<img width="325" height="500" alt="image" src="https://github.com/user-attachments/assets/3b30502b-5150-4f1b-bec2-9107aad8b9e8" /> |<img width="325" height="500" alt="image" src="https://github.com/user-attachments/assets/d658215a-83a0-4e0c-a493-46481d71fc5d" /> |
+|<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/dbad75d5-1acd-4840-91c8-c170014dd127" /> |<img width="330" height="600" alt="image" src="https://github.com/user-attachments/assets/720e0cfb-91ab-47fa-bafc-b6e1642b95b1" /> |
 |---|---|
+
+<img width="1004" height="1758" alt="image" src="" />
+<img width="1022" height="1850" alt="image" src="" />
 
 ---
 
