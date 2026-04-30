@@ -2,7 +2,7 @@
 
 A lightweight real-time app for group decision-making.
 
-Create a board, share options, and collect votes, reactions, and comments — no account required.
+Instantly create a board, share options, and collect votes, reactions, and comments — no account required.
 
 ## Demo
 **🔗** https://www.sendasway.com/
