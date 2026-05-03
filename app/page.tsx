@@ -176,10 +176,10 @@ export default function HomePage() {
   }
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-8">
+    <main className="max-w-lg mx-auto px-4 py-10">
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Don&apos;t decide alone.</h1>
-        <p className="text-[var(--muted)] mt-1">Share a link, let your friends pick for you.</p>
+        <p className="text-[var(--muted)] mt-1.5 text-base">Share a link, let your friends pick for you.</p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -188,7 +188,7 @@ export default function HomePage() {
           <label className="block text-sm font-medium mb-1.5" htmlFor="board-title">
             What are you deciding? <span className="text-[var(--accent)]">*</span>
           </label>
-          <div className="rounded-xl border border-[var(--border)] bg-white overflow-hidden">
+          <div className="rounded-xl border border-[var(--border)] bg-white shadow-[var(--shadow-sm)] overflow-hidden">
             <div className="flex items-center gap-2 px-4">
               <input
                 id="board-title"
@@ -199,7 +199,7 @@ export default function HomePage() {
                 required
                 maxLength={120}
                 autoComplete="off"
-                className="flex-1 py-3 text-base outline-none bg-transparent"
+                className="flex-1 py-3 text-base outline-none bg-transparent placeholder:text-zinc-300"
               />
               <button
                 type="button"
@@ -211,14 +211,14 @@ export default function HomePage() {
               </button>
             </div>
             {boardExpanded && (
-              <div className="border-t border-[var(--border)] px-4 py-3 bg-gray-50">
+              <div className="border-t border-[var(--border)] px-4 py-3 bg-zinc-50/60">
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Add a description (optional)"
                   maxLength={300}
                   rows={2}
-                  className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                  className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-shadow"
                 />
               </div>
             )}
@@ -234,16 +234,16 @@ export default function HomePage() {
                 key={preset.label}
                 type="button"
                 onClick={() => setEmojiPreset(i)}
-                className={`rounded-xl border px-3 py-2 text-center transition-all cursor-pointer w-[calc(33.333%-6px)] sm:flex-1
+                className={`rounded-xl border px-3 py-2 text-center transition-all duration-150 cursor-pointer w-[calc(33.333%-6px)] sm:flex-1
                   ${emojiPreset === i
-                    ? "border-[var(--accent)] bg-blue-50 text-[var(--accent)] font-medium"
-                    : "border-[var(--border)] bg-white hover:border-[var(--accent)]"
+                    ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)] font-medium shadow-[var(--shadow-sm)]"
+                    : "border-[var(--border)] bg-white hover:border-[var(--accent)] hover:bg-[var(--accent-light)]/50"
                   }`}
               >
                 <span className="block text-sm leading-none mb-1">
                   {preset.emojis.join("")}
                 </span>
-                <span className="text-xs text-[var(--muted)]">{preset.label}</span>
+                <span className={`text-xs ${emojiPreset === i ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>{preset.label}</span>
               </button>
             ))}
           </div>
@@ -255,17 +255,17 @@ export default function HomePage() {
           {options.map((opt, i) => (
             <div
               key={i}
-              className="rounded-xl border border-[var(--border)] bg-white overflow-hidden"
+              className="rounded-xl border border-[var(--border)] bg-white shadow-[var(--shadow-sm)] overflow-hidden"
             >
               <div className="flex items-center gap-2 px-3 py-2.5">
-                <span className="text-[var(--muted)] text-sm w-5 shrink-0 select-none">{i + 1}</span>
+                <span className="text-[var(--muted)] text-sm w-5 shrink-0 select-none font-medium">{i + 1}</span>
                 <input
                   type="text"
                   value={opt.title}
                   onChange={(e) => updateOption(i, "title", e.target.value)}
                   placeholder={`Option ${i + 1}`}
                   maxLength={80}
-                  className="flex-1 bg-transparent text-base outline-none placeholder:text-gray-300"
+                  className="flex-1 bg-transparent text-base outline-none placeholder:text-zinc-300"
                 />
                 <button
                   type="button"
@@ -288,14 +288,14 @@ export default function HomePage() {
               </div>
 
               {expanded === i && (
-                <div className="border-t border-[var(--border)] px-4 py-3 space-y-2 bg-gray-50">
+                <div className="border-t border-[var(--border)] px-4 py-3 space-y-2 bg-zinc-50/60">
                   <div className="relative">
                     <input
                       type="url"
                       value={opt.link_url}
                       onChange={(e) => handleLinkChange(i, e.target.value)}
                       placeholder="Link URL (paste to auto-preview)"
-                      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                      className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-shadow"
                     />
                     {previews[i]?.fetching && (
                       <span className="absolute right-3 top-2 text-xs text-[var(--muted)] animate-pulse">
@@ -310,7 +310,7 @@ export default function HomePage() {
                       value={opt.image_url}
                       onChange={(e) => updateOption(i, "image_url", e.target.value)}
                       placeholder="Image URL (optional)"
-                      className="flex-1 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                      className="flex-1 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-shadow"
                     />
                     {opt.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -329,7 +329,7 @@ export default function HomePage() {
                     onChange={(e) => updateOption(i, "notes", e.target.value)}
                     placeholder="Notes (optional)"
                     maxLength={300}
-                    className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                    className="w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-shadow"
                   />
                 </div>
               )}
@@ -340,7 +340,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={addOption}
-              className="w-full rounded-xl border-2 border-dashed border-[var(--border)] py-2.5 text-sm text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+              className="w-full rounded-xl border-2 border-dashed border-[var(--border)] py-3 text-sm text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)]/40 transition-all duration-150 cursor-pointer font-medium"
             >
               + Add option
             </button>
@@ -356,7 +356,7 @@ export default function HomePage() {
             id="expires-in"
             value={expiresIn}
             onChange={(e) => setExpiresIn(e.target.value)}
-            className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] cursor-pointer"
+            className="w-full rounded-xl border border-[var(--border)] bg-white shadow-[var(--shadow-sm)] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] cursor-pointer transition-shadow"
           >
             {EXPIRY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -373,7 +373,7 @@ export default function HomePage() {
         <button
           type="submit"
           disabled={loading || !title.trim()}
-          className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-base hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer"
+          className="w-full rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-semibold py-3 text-base shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] disabled:opacity-40 transition-all duration-150 cursor-pointer"
         >
           {loading
             ? (expiresIn === "30d" || expiresIn === "60d" ? "Redirecting to checkout…" : "Creating…")
