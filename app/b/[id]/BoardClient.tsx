@@ -49,7 +49,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
     setUserId(getUserId());
     setEditUrl(localStorage.getItem(`edit:${board.id}`));
 
-    // Load persistent display name: prefer auth metadata, fall back to localStorage
     supabase.auth.getUser().then(({ data }) => {
       const meta = data.user?.user_metadata?.display_name as string | undefined;
       if (meta) {
@@ -66,7 +65,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
     const optionIds = new Set(initialOptions.map((o) => o.id));
     const channel = supabase.channel(`board:${board.id}`);
 
-    // Reactions (INSERT and DELETE)
     channel.on(
       "postgres_changes",
       { event: "*", schema: "public", table: "reactions" },
@@ -95,7 +93,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       }
     );
 
-    // Comments (INSERT only)
     channel.on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "comments" },
@@ -112,7 +109,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       }
     );
 
-    // Votes (INSERT, UPDATE, DELETE)
     channel.on(
       "postgres_changes",
       { event: "*", schema: "public", table: "votes" },
@@ -143,14 +139,12 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
     return () => { supabase.removeChannel(channel); };
   }, [board.id, initialOptions]);
 
-  // Live countdown ticker
   useEffect(() => {
     if (isClosed) return;
     const t = setInterval(() => setTimeLeft(getTimeLeft(board.expires_at)), 30_000);
     return () => clearInterval(t);
   }, [board.expires_at, isClosed]);
 
-  // Auto-clear "copied" banner
   useEffect(() => {
     if (!copied) return;
     const t = setTimeout(() => setCopied(false), 3000);
@@ -165,7 +159,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
   async function toggleReaction(optionId: string, emoji: string) {
     if (isClosed || !userId) return;
 
-    // Capture previous state for rollback
     const prevOptions = options;
 
     setOptions((prev) =>
@@ -199,7 +192,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 
     const prevOptions = options;
 
-    // Optimistic: remove from current voted option, add to new one
     setOptions((prev) =>
       prev.map((o) => {
         let count = o.voteCount;
@@ -235,8 +227,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       return;
     }
 
-    // Reconcile client state with what the server actually did.
-    // This corrects any divergence from race conditions or network delays.
     if (!result) return;
     setOptions((prev) =>
       prev.map((o) => {
@@ -283,7 +273,6 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       );
       setCommentInputs((c) => ({ ...c, [optionId]: "" }));
 
-      // Persist the display name
       const trimmed = displayName.trim();
       if (trimmed) {
         localStorage.setItem("sway_display_name", trimmed);
@@ -319,27 +308,31 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
     <main className="max-w-lg mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-6">
-        <a href="/" className="text-sm text-[var(--muted)] hover:underline">← Sway</a>
-        <h1 className="text-2xl font-bold mt-2 leading-snug">{board.title}</h1>
+        <a href="/" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors">← Sway</a>
+        <h1 className="text-2xl font-bold mt-2 leading-snug tracking-tight">{board.title}</h1>
         {board.description && <p className="text-[var(--muted)] text-sm mt-1">{board.description}</p>}
 
-        <div className="flex items-center gap-3 mt-3 flex-wrap">
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
           {!isClosed && timeLeft && (
-            <span className="text-xs text-[var(--muted)]">{timeLeft}</span>
+            <span className="text-xs text-[var(--muted)] bg-zinc-100 px-2.5 py-1 rounded-full font-medium">{timeLeft}</span>
           )}
           {isClosed && (
-            <span className="text-xs font-medium text-red-500">Closed</span>
+            <span className="text-xs font-medium text-red-600 bg-red-50 px-2.5 py-1 rounded-full">Closed</span>
           )}
           <button
             onClick={copyLink}
-            className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors cursor-pointer"
+            className={`text-xs px-3 py-1 rounded-full border font-medium transition-all duration-150 cursor-pointer
+              ${copied
+                ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
+                : "border-[var(--border)] bg-white hover:border-[var(--accent)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)]"
+              }`}
           >
             {copied ? "Link copied!" : "Send this Sway →"}
           </button>
           {editUrl && !isClosed && (
             <a
               href={editUrl}
-              className="text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-white transition-colors"
+              className="text-xs px-3 py-1 rounded-full border border-[var(--border)] bg-white hover:border-[var(--accent)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] transition-all duration-150 font-medium"
             >
               Edit board
             </a>
@@ -348,7 +341,7 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
       </div>
 
       {justExtended && (
-        <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+        <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 font-medium">
           Sway reopened for 7 more days.
         </div>
       )}
@@ -378,13 +371,13 @@ export default function BoardClient({ board, initialOptions, justCreated, justEx
 
       {/* Closed CTA */}
       {isClosed && (
-        <div className="mt-8 rounded-2xl border-2 border-dashed border-[var(--border)] p-6 text-center space-y-3">
-          <p className="font-semibold">This Sway is closed</p>
+        <div className="mt-8 rounded-2xl border border-[var(--border)] bg-white shadow-[var(--shadow-md)] p-6 text-center space-y-3">
+          <p className="font-semibold text-base">This Sway is closed</p>
           <p className="text-sm text-[var(--muted)]">Reopen it to collect more reactions.</p>
           <button
             onClick={handleExtend}
             disabled={checkoutLoading}
-            className="rounded-xl bg-[var(--accent)] text-white font-semibold px-6 py-3 text-sm hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer"
+            className="rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-semibold px-6 py-2.5 text-sm shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] disabled:opacity-40 transition-all duration-150 cursor-pointer"
           >
             {checkoutLoading ? "Loading…" : "Reopen this Sway · $1.99"}
           </button>
@@ -431,10 +424,11 @@ function OptionCard({
   else if (hasVotedElsewhere) voteLabel = "Move vote here";
 
   return (
-    <div className={`rounded-2xl border bg-white overflow-hidden transition-all ${isPopular ? "border-[var(--accent)] ring-1 ring-[var(--accent)]" : "border-[var(--border)]"}`}>
+    <div className={`rounded-2xl border bg-white overflow-hidden transition-all duration-200 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]
+      ${isPopular ? "border-[var(--accent)]" : "border-[var(--border)]"}`}>
       {/* Image */}
       {option.image_url && (
-        <div className="aspect-video w-full bg-gray-100 overflow-hidden">
+        <div className="aspect-video w-full bg-zinc-100 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={option.image_url}
@@ -448,10 +442,13 @@ function OptionCard({
       <div className="px-4 pt-4 pb-3">
         {/* Popular badge */}
         {isPopular && (
-          <div className="mb-2 text-xs font-medium text-[var(--accent)]">
-            {isClosed
-              ? `${option.voteCount} ${option.voteCount === 1 ? "person" : "people"} picked this`
-              : "Most popular"}
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] inline-block" />
+            <span className="text-xs font-semibold text-[var(--accent)]">
+              {isClosed
+                ? `${option.voteCount} ${option.voteCount === 1 ? "person" : "people"} picked this`
+                : "Most popular"}
+            </span>
           </div>
         )}
 
@@ -463,7 +460,7 @@ function OptionCard({
               href={option.link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[var(--accent)] shrink-0 hover:underline"
+              className="text-xs text-[var(--accent)] shrink-0 hover:underline font-medium"
             >
               View ↗
             </a>
@@ -471,15 +468,15 @@ function OptionCard({
         </div>
         {option.notes && <p className="text-sm text-[var(--muted)] mt-1">{option.notes}</p>}
 
-        {/* Vote — primary action: full-width, rectangular, dominant */}
+        {/* Vote button */}
         <div className="mt-3">
           <button
             onClick={onVote}
             disabled={isClosed || !userId}
             className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-all duration-150 cursor-pointer
               ${isMyVote
-                ? "bg-[var(--accent)] border border-[var(--accent)] text-white"
-                : "bg-gray-50 border border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-blue-50 hover:text-[var(--accent)]"
+                ? "bg-[var(--accent)] border border-[var(--accent)] text-white shadow-[var(--shadow-sm)]"
+                : "bg-zinc-50 border border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)]"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {voteLabel}
@@ -491,7 +488,7 @@ function OptionCard({
           </button>
         </div>
 
-        {/* Reactions — secondary: small chips, clearly subordinate */}
+        {/* Reactions */}
         <div className="mt-2.5 pt-2.5 border-t border-[var(--border)] flex gap-1.5 flex-wrap">
           {emojis.map((emoji) => {
             const count = option.reactions[emoji] ?? 0;
@@ -501,10 +498,10 @@ function OptionCard({
                 key={emoji}
                 onClick={() => onReact(emoji)}
                 disabled={isClosed}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-all duration-150 cursor-pointer
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border font-medium transition-all duration-150 cursor-pointer
                   ${reacted
                     ? "bg-[var(--accent)] border-[var(--accent)] text-white"
-                    : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:bg-blue-50 hover:text-[var(--accent)]"
+                    : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)]"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <span>{emoji}</span>
@@ -520,7 +517,7 @@ function OptionCard({
             setShowComments((s) => !s);
             if (!showComments) setTimeout(() => inputRef.current?.focus(), 50);
           }}
-          className="mt-3 text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+          className="mt-3 text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer font-medium"
         >
           {option.comments.length > 0
             ? `${option.comments.length} comment${option.comments.length !== 1 ? "s" : ""} · add yours`
@@ -530,12 +527,12 @@ function OptionCard({
 
       {/* Comments section */}
       {showComments && (
-        <div className="border-t border-[var(--border)] px-4 pb-4 pt-3 space-y-3 bg-gray-50">
+        <div className="border-t border-[var(--border)] px-4 pb-4 pt-3 space-y-3 bg-zinc-50/60">
           {option.comments.map((c) => (
             <div key={c.id} className="text-sm">
-              <span className="font-medium">{c.user_name || "Anonymous"}</span>
+              <span className="font-semibold text-[var(--text)]">{c.user_name || "Anonymous"}</span>
               <span className="text-[var(--muted)] mx-1">·</span>
-              <span>{c.body}</span>
+              <span className="text-[var(--muted)]">{c.body}</span>
             </div>
           ))}
           {!isClosed && (
@@ -546,7 +543,7 @@ function OptionCard({
                 onChange={(e) => onNameChange(e.target.value)}
                 placeholder="Your name (optional)"
                 maxLength={50}
-                className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className="w-full rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-shadow"
               />
               <div className="flex gap-2">
                 <input
@@ -557,12 +554,12 @@ function OptionCard({
                   onKeyDown={handleKeyDown}
                   placeholder="Add a comment…"
                   maxLength={500}
-                  className="flex-1 min-w-0 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                  className="flex-1 min-w-0 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-shadow"
                 />
                 <button
                   onClick={onCommentSubmit}
                   disabled={!commentInput.trim() || isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity cursor-pointer shrink-0"
+                  className="px-4 py-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-sm font-semibold shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] disabled:opacity-40 transition-all duration-150 cursor-pointer shrink-0"
                 >
                   {isSubmitting ? "…" : "Send"}
                 </button>

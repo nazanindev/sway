@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import NavBar from "./NavBar";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Sway — don't decide alone",
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-screen">
+    <html lang="en" className={plusJakartaSans.variable}>
+      <body className="min-h-screen antialiased">
         <NavBar />
         {children}
       </body>

@@ -22,21 +22,29 @@ export default function NavBar() {
   }, []);
 
   return (
-    <nav className="flex items-center justify-between gap-4 px-4 py-3 max-w-lg mx-auto">
-      <a href="/" className="font-semibold text-[var(--text)] tracking-tight">
-        Sway
-      </a>
-      {ready && (
-        user ? (
-          <a href="/dashboard" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer">
-            My boards
-          </a>
-        ) : (
-          <a href="/auth/login" className="text-sm text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer">
-            Sign in
-          </a>
-        )
-      )}
+    <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-[var(--border)]">
+      <div className="flex items-center justify-between gap-4 px-4 py-3 max-w-lg mx-auto">
+        <a href="/" className="font-bold text-[var(--text)] tracking-tight text-lg leading-none">
+          Sway
+        </a>
+        {ready && (
+          user ? (
+            <a
+              href="/dashboard"
+              className="text-sm font-medium text-[var(--muted)] hover:text-[var(--text)] transition-colors duration-150 px-3 py-1.5 rounded-lg hover:bg-zinc-100"
+            >
+              My boards
+            </a>
+          ) : (
+            <a
+              href="/auth/login"
+              className="text-sm font-medium text-[var(--muted)] hover:text-[var(--text)] transition-colors duration-150 px-3 py-1.5 rounded-lg hover:bg-zinc-100"
+            >
+              Sign in
+            </a>
+          )
+        )}
+      </div>
     </nav>
   );
 }
