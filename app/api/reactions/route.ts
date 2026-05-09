@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
-
-const ALLOWED_EMOJIS = new Set(["❤️", "🔥", "🤔", "❌"]);
+import { ALLOWED_REACTION_EMOJIS } from "@/lib/reaction-emojis";
 
 export async function POST(req: Request) {
   const ip = getIp(req);
@@ -22,7 +21,7 @@ export async function POST(req: Request) {
   if (typeof option_id !== "string" || typeof emoji !== "string" || typeof user_id !== "string") {
     return NextResponse.json({ error: "option_id, emoji, user_id required" }, { status: 400 });
   }
-  if (!ALLOWED_EMOJIS.has(emoji)) {
+  if (!ALLOWED_REACTION_EMOJIS.has(emoji)) {
     return NextResponse.json({ error: "emoji not allowed" }, { status: 400 });
   }
   // Soft-validate UUID format to prevent injection

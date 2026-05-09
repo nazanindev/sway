@@ -2,14 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-
-const EMOJI_PRESETS = [
-  { label: "Vibes",    emojis: ["❤️", "🔥", "🤔", "❌"] },
-  { label: "Yes / No", emojis: ["👍", "👎", "🤷", "💯"] },
-  { label: "Priority", emojis: ["⭐", "💡", "💸", "🚫"] },
-  { label: "Hype",     emojis: ["😍", "🚀", "💀", "🤌"] },
-  { label: "Mood",     emojis: ["✨", "😭", "💅", "🫡"] },
-] as const;
+import { REACTION_EMOJI_PRESETS } from "@/lib/reaction-emojis";
 
 interface OptionDraft {
   title: string;
@@ -140,7 +133,7 @@ export default function HomePage() {
           title: title.trim(),
           description: description.trim() || null,
           expires_in: expiresIn,
-          emoji_set: EMOJI_PRESETS[emojiPreset].emojis,
+          emoji_set: [...REACTION_EMOJI_PRESETS[emojiPreset]],
           options: filled.map((o) => ({
             title: o.title.trim(),
             image_url: o.image_url.trim() || null,
@@ -229,21 +222,21 @@ export default function HomePage() {
         <div>
           <p className="text-sm font-medium mb-1.5">Reaction style</p>
           <div className="flex flex-wrap gap-2">
-            {EMOJI_PRESETS.map((preset, i) => (
+            {REACTION_EMOJI_PRESETS.map((preset, i) => (
               <button
-                key={preset.label}
+                key={`reaction-preset-${preset.join("-")}`}
                 type="button"
                 onClick={() => setEmojiPreset(i)}
-                className={`rounded-xl border px-3 py-2 text-center transition-all duration-150 cursor-pointer w-[calc(33.333%-6px)] sm:flex-1
+                title={preset.join(" ")}
+                className={`rounded-xl border px-3 py-2.5 text-center transition-all duration-150 cursor-pointer w-[calc(33.333%-6px)] sm:flex-1
                   ${emojiPreset === i
                     ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)] font-medium shadow-[var(--shadow-sm)]"
                     : "border-[var(--border)] bg-white hover:border-[var(--accent)] hover:bg-[var(--accent-light)]/50"
                   }`}
               >
-                <span className="block text-sm leading-none mb-1">
-                  {preset.emojis.join("")}
+                <span className="block text-lg leading-none tracking-tight">
+                  {preset.join("")}
                 </span>
-                <span className={`text-xs ${emojiPreset === i ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>{preset.label}</span>
               </button>
             ))}
           </div>

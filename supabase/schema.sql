@@ -9,7 +9,7 @@ create table boards (
   description text,
   edit_token  text not null unique default encode(gen_random_bytes(32), 'hex'),
   expires_at  timestamptz not null default (now() + interval '7 days'),
-  emoji_set   text[] not null default array['❤️','🔥','🤔','❌'],
+  emoji_set   text[] not null default array['👍','👎','🤔','❌'],
   is_public   boolean not null default false,
   created_at  timestamptz not null default now()
 );

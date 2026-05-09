@@ -4,6 +4,7 @@ import { getServiceClient } from "@/lib/supabase/server";
 import { getAuthServerClient } from "@/lib/supabase/auth-server";
 import { isValidUrl } from "@/lib/validate-url";
 import { rateLimit, getIp } from "@/lib/rate-limit";
+import { ALLOWED_REACTION_EMOJIS, DEFAULT_REACTION_EMOJI_SET } from "@/lib/reaction-emojis";
 
 const MAX_OPTIONS = 6;
 const MAX_TITLE_LEN = 120;
@@ -83,16 +84,8 @@ export async function POST(req: Request) {
   const authClient = getAuthServerClient();
   const { data: { user } } = await authClient.auth.getUser();
 
-  const DEFAULT_EMOJIS = ["❤️", "🔥", "🤔", "❌"];
-  const ALLOWED_EMOJIS = new Set([
-    "❤️","🔥","🤔","❌",
-    "👍","👎","🤷","💯",
-    "⭐","💡","💸","🚫",
-    "😍","🚀","💀","🤌",
-    "✨","😭","💅","🫡",
-  ]);
-  let resolvedEmojiSet = DEFAULT_EMOJIS;
-  if (Array.isArray(emoji_set) && emoji_set.length === 4 && emoji_set.every((e) => typeof e === "string" && ALLOWED_EMOJIS.has(e))) {
+  let resolvedEmojiSet = DEFAULT_REACTION_EMOJI_SET;
+  if (Array.isArray(emoji_set) && emoji_set.length === 4 && emoji_set.every((e) => typeof e === "string" && ALLOWED_REACTION_EMOJIS.has(e))) {
     resolvedEmojiSet = emoji_set as string[];
   }
 
