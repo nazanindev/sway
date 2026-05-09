@@ -133,7 +133,7 @@ export default function HomePage() {
           title: title.trim(),
           description: description.trim() || null,
           expires_in: expiresIn,
-          emoji_set: [...REACTION_EMOJI_PRESETS[emojiPreset]],
+          emoji_set: [...REACTION_EMOJI_PRESETS[emojiPreset].emojis],
           options: filled.map((o) => ({
             title: o.title.trim(),
             image_url: o.image_url.trim() || null,
@@ -218,25 +218,23 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Emoji preset picker */}
+        {/* Reaction scheme — emojis appear on the board after creation */}
         <div>
           <p className="text-sm font-medium mb-1.5">Reaction style</p>
           <div className="flex flex-wrap gap-2">
             {REACTION_EMOJI_PRESETS.map((preset, i) => (
               <button
-                key={`reaction-preset-${preset.join("-")}`}
+                key={preset.label}
                 type="button"
                 onClick={() => setEmojiPreset(i)}
-                title={preset.join(" ")}
-                className={`rounded-xl border px-3 py-2.5 text-center transition-all duration-150 cursor-pointer w-[calc(33.333%-6px)] sm:flex-1
+                aria-label={`${preset.label}. Emojis show on the board after creation.`}
+                className={`rounded-xl border px-3 py-2.5 text-center transition-all duration-150 cursor-pointer w-[calc(33.333%-6px)] sm:flex-1 min-h-[2.75rem] flex items-center justify-center
                   ${emojiPreset === i
                     ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)] font-medium shadow-[var(--shadow-sm)]"
-                    : "border-[var(--border)] bg-white hover:border-[var(--accent)] hover:bg-[var(--accent-light)]/50"
+                    : "border-[var(--border)] bg-white hover:border-[var(--accent)] hover:bg-[var(--accent-light)]/50 text-[var(--text)]"
                   }`}
               >
-                <span className="block text-lg leading-none tracking-tight">
-                  {preset.join("")}
-                </span>
+                <span className="text-sm font-medium leading-none">{preset.label}</span>
               </button>
             ))}
           </div>
