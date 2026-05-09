@@ -1,0 +1,2 @@
+-- Optional local-only seeds. Demo apartment board with custom reactions is created by
+-- migration 005_readme_demo_apartment_board.sql (`supabase db reset` applies it).
