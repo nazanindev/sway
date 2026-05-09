@@ -7,7 +7,7 @@ Instantly create a board, share options, and collect votes, reactions, and comme
 ## Demo
 **🔗** https://www.sendasway.com/
 
-|<img width="500" height="770" alt="image" src="https://github.com/user-attachments/assets/ae3c0493-4467-428e-b725-f56c50b1c366" /> |<img width="500" height="650" alt="image" src="https://github.com/user-attachments/assets/7ec85062-09ca-4843-ae05-333679711c31" /> |
+|<img width="500" height="770" alt="image" src="https://github.com/user-attachments/assets/ae3c0493-4467-428e-b725-f56c50b1c366" /> | <img width="610" height="770" alt="image" src="https://github.com/user-attachments/assets/e928eff3-1b66-4c08-93a6-b9fdb6d352b4" /> |
 |---|---|
 
 ---
