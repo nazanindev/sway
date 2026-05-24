@@ -9,7 +9,7 @@ const MAX_NOTES_LEN = 300;
 
 export async function POST(req: Request) {
   const ip = getIp(req);
-  if (!rateLimit(`options-post:${ip}`, 20, 60_000)) {
+  if (!(await rateLimit(`options-post:${ip}`, 20, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

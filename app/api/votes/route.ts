@@ -4,7 +4,7 @@ import { rateLimit, getIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const ip = getIp(req);
-  if (!rateLimit(`votes:${ip}`, 60, 60_000)) {
+  if (!(await rateLimit(`votes:${ip}`, 60, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

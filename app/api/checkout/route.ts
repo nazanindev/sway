@@ -8,7 +8,7 @@ const EXTENSION_PRICE_CENTS = 199; // $1.99
 
 export async function POST(req: Request) {
   const ip = getIp(req);
-  if (!rateLimit(`checkout:${ip}`, 5, 60_000)) {
+  if (!(await rateLimit(`checkout:${ip}`, 5, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

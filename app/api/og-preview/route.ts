@@ -38,7 +38,7 @@ function isPrivateHostname(hostname: string): boolean {
 
 export async function GET(req: Request) {
   const ip = getIp(req);
-  if (!rateLimit(`og-preview:${ip}`, 30, 60_000)) {
+  if (!(await rateLimit(`og-preview:${ip}`, 30, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
         "Accept": "text/html,application/xhtml+xml",
       },
       signal: AbortSignal.timeout(6000),
-      redirect: "follow",
+      redirect: "error",
     });
 
     if (!res.ok) return NextResponse.json({ image: null, title: null, description: null });

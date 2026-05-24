@@ -11,7 +11,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   const ip = getIp(req);
-  if (!rateLimit(`options-patch:${ip}`, 20, 60_000)) {
+  if (!(await rateLimit(`options-patch:${ip}`, 20, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -88,7 +88,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const ip = getIp(req);
-  if (!rateLimit(`options-delete:${ip}`, 20, 60_000)) {
+  if (!(await rateLimit(`options-delete:${ip}`, 20, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

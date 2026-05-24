@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { getServiceClient } from "@/lib/supabase/server";
 import { getAuthServerClient } from "@/lib/supabase/auth-server";
 import { rateLimit, getIp } from "@/lib/rate-limit";
@@ -63,7 +64,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   const ip = getIp(req);
-  if (!rateLimit(`boards-patch:${ip}`, 10, 60_000)) {
+  if (!(await rateLimit(`boards-patch:${ip}`, 10, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
@@ -96,7 +97,7 @@ export async function PATCH(
     .eq("id", params.id)
     .single();
 
-  if (!board || board.edit_token !== token) {
+  if (!board || !timingSafeEqual(Buffer.from(board.edit_token), Buffer.from(token))) {
     return NextResponse.json({ error: "Invalid token" }, { status: 403 });
   }
 

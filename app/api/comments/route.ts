@@ -7,7 +7,7 @@ const MAX_NAME_LEN = 50;
 
 export async function POST(req: Request) {
   const ip = getIp(req);
-  if (!rateLimit(`comments:${ip}`, 20, 60_000)) {
+  if (!(await rateLimit(`comments:${ip}`, 20, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 

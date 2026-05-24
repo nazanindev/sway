@@ -27,7 +27,7 @@ const PAID_DURATIONS: Record<string, { ms: number; priceCents: number; label: st
 
 export async function POST(req: Request) {
   const ip = getIp(req);
-  if (!rateLimit(`boards:${ip}`, 10, 60_000)) {
+  if (!(await rateLimit(`boards:${ip}`, 10, 60_000))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
