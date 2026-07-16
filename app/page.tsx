@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { REACTION_EMOJI_PRESETS } from "@/lib/reaction-emojis";
+import { uploadImage } from "@/lib/upload-image";
 
 interface OptionDraft {
   title: string;
@@ -57,7 +58,22 @@ export default function HomePage() {
   const [expiresIn, setExpiresIn] = useState("7d");
   const [emojiPreset, setEmojiPreset] = useState(0);
   const [previews, setPreviews] = useState<Record<number, OgPreview & { fetching?: boolean }>>({});
+  const [uploading, setUploading] = useState<Record<number, boolean>>({});
   const previewTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  async function handleFileUpload(i: number, file: File | undefined | null) {
+    if (!file) return;
+    setError(null);
+    setUploading((u) => ({ ...u, [i]: true }));
+    try {
+      const url = await uploadImage(file);
+      updateOption(i, "image_url", url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading((u) => ({ ...u, [i]: false }));
+    }
+  }
 
   function updateOption(i: number, field: keyof OptionDraft, value: string) {
     setOptions((prev) => prev.map((o, idx) => (idx === i ? { ...o, [field]: value } : o)));
@@ -300,9 +316,23 @@ export default function HomePage() {
                       type="url"
                       value={opt.image_url}
                       onChange={(e) => updateOption(i, "image_url", e.target.value)}
-                      placeholder="Image URL (optional)"
+                      placeholder="Image URL or upload →"
                       className="flex-1 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] transition-shadow"
                     />
+                    <label
+                      className={`shrink-0 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors ${uploading[i] ? "opacity-60 pointer-events-none" : ""}`}
+                    >
+                      {uploading[i] ? "Uploading…" : "Upload"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          handleFileUpload(i, e.target.files?.[0]);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
                     {opt.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img

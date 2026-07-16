@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { Board, Option } from "@/lib/supabase/types";
+import { uploadImage } from "@/lib/upload-image";
 
 function ChevronDown({ className }: { className?: string }) {
   return (
@@ -57,7 +58,21 @@ export default function EditClient({ board, initialOptions }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const previewTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  async function handleFileUpload(id: string, file: File | undefined | null) {
+    if (!file) return;
+    setUploading((u) => ({ ...u, [id]: true }));
+    try {
+      const url = await uploadImage(file);
+      updateOption(id, "image_url", url);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setUploading((u) => ({ ...u, [id]: false }));
+    }
+  }
 
   const publicUrl = `/b/${board.id}`;
   const isExpired = new Date(board.expires_at) < new Date();
@@ -277,10 +292,26 @@ export default function EditClient({ board, initialOptions }: Props) {
                         type="url"
                         value={o.image_url}
                         onChange={(e) => updateOption(o.id, "image_url", e.target.value)}
-                        placeholder="Image URL (optional)"
+                        placeholder="Image URL or upload →"
                         disabled={isExpired}
                         className="flex-1 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] disabled:opacity-50"
                       />
+                      {!isExpired && (
+                        <label
+                          className={`shrink-0 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors ${uploading[o.id] ? "opacity-60 pointer-events-none" : ""}`}
+                        >
+                          {uploading[o.id] ? "Uploading…" : "Upload"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              handleFileUpload(o.id, e.target.files?.[0]);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      )}
                       {o.image_url && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
