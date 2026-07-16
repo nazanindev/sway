@@ -25,18 +25,20 @@ type Db = ReturnType<typeof getServiceClient>;
 let bucketReady: Promise<void> | null = null;
 function ensureBucket(db: Db): Promise<void> {
   if (!bucketReady) {
-    bucketReady = db.storage
-      .createBucket(BUCKET, { public: true, fileSizeLimit: MAX_BYTES })
-      .then(({ error }) => {
-        if (error && !/exist/i.test(error.message)) {
-          bucketReady = null;
-          throw error;
-        }
-      })
-      .catch((e) => {
-        bucketReady = null;
-        throw e;
+    bucketReady = (async () => {
+      // Prefer detecting an existing bucket — createBucket needs elevated
+      // privileges that getBucket/upload do not.
+      const { data: existing } = await db.storage.getBucket(BUCKET);
+      if (existing) return;
+      const { error } = await db.storage.createBucket(BUCKET, {
+        public: true,
+        fileSizeLimit: MAX_BYTES,
       });
+      if (error && !/exist/i.test(error.message)) throw error;
+    })().catch((e) => {
+      bucketReady = null;
+      throw e;
+    });
   }
   return bucketReady;
 }
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
     await ensureBucket(db);
   } catch (e) {
     console.error("[upload] ensureBucket error:", e);
-    return NextResponse.json({ error: "Storage unavailable" }, { status: 500 });
+    return NextResponse.json({ error: "Storage unavailable", detail: String((e as Error)?.message ?? e) }, { status: 500 });
   }
 
   const path = `${randomUUID()}.${ext}`;
@@ -86,7 +88,7 @@ export async function POST(req: Request) {
 
   if (error) {
     console.error("[upload] upload error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: "Upload failed", detail: error.message }, { status: 500 });
   }
 
   const { data } = db.storage.from(BUCKET).getPublicUrl(path);
